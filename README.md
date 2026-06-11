@@ -69,11 +69,20 @@ ai-git
 
 ### 2. 使用 AI 生成 Commit Message
 
-设置环境变量：
+单次会话设置环境变量：
 
 ```bash
 export AI_API_KEY="your-api-key"
-export AI_URL="https://api.openai.com"
+export AI_URL="https://api.deepseek.cn"
+export AI_MODEL="deepseek-v4-flash"
+```
+
+全局设置 在 `~/.bashrc` 或 `~/.zshrc` 中添加：
+
+```bash
+export AI_API_KEY="your-api-key"
+export AI_URL="https://api.deepseek.cn"
+export AI_MODEL="deepseek-v4-flash"
 ```
 
 然后运行：
