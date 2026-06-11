@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import AppConfig from "./config";
@@ -69,7 +71,6 @@ async function main() {
       );
       process.exit(1);
     }
-
 
     const MAX_CHARS = AppConfig.MAX_CHARS;
     if (prompt.length > MAX_CHARS) {

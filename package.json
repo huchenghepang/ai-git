@@ -1,20 +1,62 @@
 {
   "name": "ai-git",
-  "module": "index.ts",
+  "version": "1.0.0",
+  "description": "AI-powered Git context analyzer - 自动分析Git变更、生成Commit Message和代码审查报告",
   "type": "module",
-  "devDependencies": {
-    "@types/bun": "latest"
+  "bin": {
+    "ai-git": "dist/ai-git.js",
+    "ai-git-review": "dist/ai-git-review.js",
+    "ai-run": "dist/ai-run.js"
   },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
+    "build": "bun run build:git-context && bun run build:git-review && bun run build:run-ai",
+    "build:git-context": "bun build ./src/index.ts --outfile ./dist/ai-git.js --target node",
+    "build:git-review": "bun build ./src/ai-git-review.ts --outfile ./dist/ai-git-review.js --target node",
+    "build:run-ai": "bun build ./src/run-ai.ts --outfile ./dist/ai-run.js --target node",
+    "postbuild": "node scripts/postbuild.mjs",
+    "prepublishOnly": "bun run build",
+    "prepack": "bun run build",
     "start": "bun src/index.ts"
+  },
+  "keywords": [
+    "git",
+    "ai",
+    "commit",
+    "code-review",
+    "cli",
+    "git-diff",
+    "commit-message",
+    "developer-tools"
+  ],
+  "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huchenghepang/ai-git.git"
+  },
+  "bugs": {
+    "url": "https://github.com/huchenghepang/ai-git/issues"
+  },
+  "homepage": "https://github.com/huchenghepang/ai-git#readme",
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "chalk": "^5.6.2",
     "clipboardy": "^5.3.1",
     "minimatch": "^10.2.5",
     "simple-git": "^3.36.0"
-  }
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.18.3+sha512.bbd16e6d7286fd7e01f6b3c0b3c932cda2965c06a908328f74663f10a9aea51f1129eea615134bf992831b009eabe167ecb7008b597f40ff9bc75946aadfb08d"
 }

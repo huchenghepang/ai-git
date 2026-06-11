@@ -148,20 +148,22 @@ class AICodeReviewParser {
   }
 
   /**
-   * 从文件路径读取并解析（Bun 版本）
+   * 从文件路径读取并解析
    */
   static async fromFile(filePath: string): Promise<AICodeReviewResponse> {
     try {
-      // Bun 内置的 file 读取方式
-      const file = Bun.file(filePath);
-      const exists = await file.exists();
+      const fs = await import("node:fs/promises");
+      const exists = await fs.stat(filePath).then(
+        () => true,
+        () => false,
+      );
 
       if (!exists) {
         console.error(`文件不存在: ${filePath}`);
         return this.getDefaultResponse();
       }
 
-      const content = await file.text();
+      const content = await fs.readFile(filePath, "utf8");
       return this.fromString(content);
     } catch (error) {
       console.error(`读取文件失败: ${filePath}`, error);
@@ -378,3 +380,4 @@ export {
   type Recommendation,
   type ScoreBreakdown,
 };
+

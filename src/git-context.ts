@@ -758,14 +758,14 @@ feat(utils): add AI request and URL parsing utilities
 `;
 }
 
-function promptUserForCopy(text: string): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    const question = `是否将以下内容复制到剪贴板？\n${text}\n(y/n | Y/N)：`;
-    const answer = prompt(question);
-    if (answer?.toLowerCase?.() === "y") {
-      resolve(true);
-    } else {
-      resolve(false);
-    }
-  });
+async function promptUserForCopy(text: string): Promise<boolean> {
+  const rl = readline.createInterface({ input, output });
+  try {
+    const answer = await rl.question(
+      `是否将以下内容复制到剪贴板？\n${text}\n(y/n): `,
+    );
+    return answer.trim().toLowerCase() === "y";
+  } finally {
+    rl.close();
+  }
 }
