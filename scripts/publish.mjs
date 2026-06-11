@@ -16,7 +16,6 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
 
-const __dirname = new URL(".", import.meta.url).pathname;
 const pkgPath = new URL("../package.json", import.meta.url).pathname;
 const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
 
@@ -125,7 +124,46 @@ async function main() {
 
   // ---- 6. 发布到 npm ----
   console.log("\n📦 发布到 npm...");
-  run("npm publish");
+
+  // 检查是否需要 2FA OTP
+  let otpCode = "";
+  try {
+    // 先试一次，看是否需要 OTP
+    execSync("npm publish --dry-run", { stdio: "pipe" });
+  } catch {
+    // ignore
+  }
+
+  const tryPublish = (otp) => {
+    const cmd = otp ? `npm publish --otp=${otp}` : "npm publish";
+    try {
+      execSync(cmd, { stdio: "inherit" });
+      return true;
+    } catch (err) {
+      // 检查是否因为 2FA OTP 失败
+      const status = err.status;
+      const signal = err.signal;
+      // execSync with inherit 不会捕获 stderr，但 exit code 非 0 即失败
+      // 如果之前没传 OTP 且失败了，大概率是 2FA 要求
+      // 如果传了 OTP 还失败，说明 OTP 错误
+      if (!otp) return false; // 首次尝试，大概率需要 OTP
+      // 传了 OTP 仍然失败
+      console.error("\n❌ 发布失败。常见原因：");
+      console.error("  1. OTP 验证码错误 — 请重新运行");
+      console.error("  2. 没有登录 — 请先执行 npm login");
+      console.error("  3. 包名冲突 — ai-git 可能已被占用");
+      process.exit(1);
+    }
+  };
+
+  if (!tryPublish("")) {
+    console.log("\n🔐 检测到两步验证 (2FA)");
+    console.log("请在 npm 认证器应用中查看验证码\n");
+    const rl3 = createInterface({ input: stdin, output: stdout });
+    otpCode = await rl3.question("请输入 npm OTP 验证码: ");
+    rl3.close();
+    tryPublish(otpCode);
+  }
 
   // ---- 7. Git 打标签 ----
   try {
