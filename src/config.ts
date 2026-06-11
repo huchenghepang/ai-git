@@ -9,6 +9,7 @@ const AiConfig: AppConfig = {
   aiModel: process.env.AI_MODEL || "deepseek-v4-flash",
   aiUrl: parseAiUrl(process.env.AI_URL),
   timeout: Number.parseInt(process.env.AI_TIMEOUT || "30000"),
+  MAX_CHARS: Number.parseInt(process.env.MAX_CHARS || "120_000"),
 };
 
 export default AiConfig;
