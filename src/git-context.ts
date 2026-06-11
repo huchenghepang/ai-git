@@ -476,7 +476,7 @@ function parseArgs() {
   }
 }
 
-export async function main() {
+export async function runContext() {
   parseArgs();
   const git = simpleGit();
 
@@ -768,10 +768,4 @@ function promptUserForCopy(text: string): Promise<boolean> {
       resolve(false);
     }
   });
-}
-
-try {
-  main();
-} catch (error) {
-  console.error("❌ 错误:", error);
 }
