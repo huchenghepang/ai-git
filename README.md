@@ -243,22 +243,26 @@ bun install
 
 # 启动开发模式
 bun src/index.ts
-
-# 构建
-bun run build
 ```
 
 ### 发布到 npm
 
 ```bash
-# 构建
-bun run build
+# 一键发布（交互式选择版本）
+bun run release
 
-# 登录 npm
-npm login
+# 或直接指定版本类型
+bun run release -- patch    # 补丁版本 1.0.0 → 1.0.1
+bun run release -- minor    # 小版本    1.0.0 → 1.1.0
+bun run release -- major    # 大版本    1.0.0 → 2.0.0
+bun run release -- 2.0.0    # 自定义版本号
 
-# 发布
-npm publish
+# 该命令会自动完成：
+#   1. 检查 Git 工作区是否干净
+#   2. 更新版本号
+#   3. 执行构建
+#   4. 发布到 npm
+#   5. Git 打标签并推送
 ```
 
 ### 本地测试

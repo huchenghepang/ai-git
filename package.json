@@ -18,6 +18,7 @@
     "build:git-review": "bun build ./src/ai-git-review.ts --outfile ./dist/ai-git-review.js --target node",
     "build:run-ai": "bun build ./src/run-ai.ts --outfile ./dist/ai-run.js --target node",
     "postbuild": "node scripts/postbuild.mjs",
+    "release": "node scripts/publish.mjs",
     "prepublishOnly": "bun run build",
     "prepack": "bun run build",
     "start": "bun src/index.ts"
