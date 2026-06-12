@@ -7,7 +7,6 @@ import readline from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 
 import chalk from "chalk";
-import clipboard from "clipboardy";
 import { minimatch } from "minimatch";
 import simpleGit, { type SimpleGit } from "simple-git";
 import AiConfig from "./config";
@@ -23,12 +22,60 @@ import {
 // 创建一个包装函数来处理中文
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    // 确保文本是 UTF-8 编码
-    const cleanText = text.replace(/\u0000/g, ""); // 移除空字符
-    await clipboard.writeSync(cleanText);
+    const cleanText = text.replace(/\u0000/g, "");
+    const { execSync } = await import("node:child_process");
+    const platform = process.platform;
+
+    if (platform === "win32") {
+      // Windows
+      execSync("clip.exe", { input: cleanText });
+    } else if (platform === "darwin") {
+      // macOS
+      execSync("pbcopy", { input: cleanText });
+    } else if (platform === "linux") {
+      // Linux - 使用系统命令
+      if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
+        console.warn(chalk.yellow("⚠️ 警告: 未检测到图形界面，无法使用剪贴板"));
+        return false;
+      }
+
+      // 优先使用 xclip (X11)
+      try {
+        execSync("which xclip", { stdio: "ignore" });
+        execSync("xclip -selection clipboard", { input: cleanText });
+        return true;
+      } catch {
+        // 尝试 xsel (X11)
+        try {
+          execSync("which xsel", { stdio: "ignore" });
+          execSync("xsel --clipboard --input", { input: cleanText });
+          return true;
+        } catch {
+          // 尝试 wl-copy (Wayland)
+          try {
+            execSync("which wl-copy", { stdio: "ignore" });
+            execSync("wl-copy", { input: cleanText });
+            return true;
+          } catch {
+            console.error(chalk.red("❌ 复制失败: 未找到剪贴板工具"));
+            console.log(
+              chalk.blue("💡 请安装: sudo pacman -S xclip  (Arch Linux)"),
+            );
+            console.log(
+              chalk.blue("   或: sudo apt install xclip  (Ubuntu/Debian)"),
+            );
+            return false;
+          }
+        }
+      }
+    } else {
+      console.warn(chalk.yellow(`⚠️ 不支持的操作系统: ${platform}`));
+      return false;
+    }
+
     return true;
-  } catch (error) {
-    console.error(chalk.red("复制失败:"), error);
+  } catch (error: any) {
+    console.error(chalk.red("❌ 复制失败:"), error.message);
     return false;
   }
 }
