@@ -22,9 +22,9 @@ AI-powered Git context analyzer — 自动分析 Git 暂存区变更，生成详
 ### 全局安装（推荐）
 
 ```bash
-npm install -g ai-git
+npm install -g @huchenghe/ai-git
 # 或
-pnpm add -g ai-git
+pnpm add -g @huchenghe/ai-git
 ```
 
 安装后即可在任何 Git 仓库中使用 `ai-git` 命令。
@@ -32,9 +32,9 @@ pnpm add -g ai-git
 ### 项目内安装
 
 ```bash
-npm install --save-dev ai-git
+npm install --save-dev @huchenghe/ai-git
 # 或
-pnpm add -D ai-git
+pnpm add -D @huchenghe/ai-git
 ```
 
 ### 从源码安装
