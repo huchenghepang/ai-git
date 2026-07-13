@@ -59,16 +59,34 @@ export async function requestAi(
   });
 
   const json: any = await res.json();
+
+  if (json && json.error) {
+    throw new Error(
+      `AI API error: ${json.error.message || JSON.stringify(json.error)}`,
+    );
+  }
+
   if (
     json &&
     json.choices &&
     Array.isArray(json.choices) &&
     json.choices.length > 0 &&
-    json.choices[0].message &&
-    json.choices[0].message.content
+    json.choices[0].message
   ) {
-    return json.choices[0].message.content;
-  } else {
-    throw new Error("AI response is not in expected format");
+    const content = json.choices[0].message.content;
+    const reasoningContent =
+      json.choices[0].message.reasoning_content ||
+      json.choices[0].message.reasoning ||
+      "";
+
+    const finalContent = content || reasoningContent;
+    if (finalContent) {
+      return finalContent;
+    }
   }
+
+  const debugInfo = JSON.stringify(json, null, 2).slice(0, 500);
+  throw new Error(
+    `AI response is not in expected format. Response: ${debugInfo}`,
+  );
 }

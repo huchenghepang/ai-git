@@ -630,6 +630,7 @@ async function performAiAnalysis(
 
     console.log(chalk.green(`✅ ${t("ai.result.appendedToReport")}`));
   } catch (error: any) {
+    console.error(error);
     console.error(chalk.red(`❌ ${t("ai.analysisFailed")}:`), error.message);
     // 如果解析失败，把原始结果也追加进去供人工排查
     if (outputFile) {
