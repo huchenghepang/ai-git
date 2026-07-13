@@ -29,6 +29,7 @@ async function main() {
     -s                 ${t("cli.optionSkipSensitive")}
     -u                 ${t("cli.optionUploadAi")}
     -j                 ${t("cli.optionForceJson")}
+    -n, --no-write     ${t("cli.optionNoWrite")}
     -L, --lang <zh|en> ${t("cli.optionLang")}
     -h                 ${t("cli.optionHelp")}
 

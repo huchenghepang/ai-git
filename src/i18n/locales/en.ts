@@ -36,6 +36,7 @@ export const en = {
       "Upload to AI for analysis (requires AI_API_KEY and AI_URL)",
     optionForceJson: "Force AI to output JSON format (requires -u)",
     optionHelp: "Show help information",
+    optionNoWrite: "Do not write report to file (clipboard only)",
     optionLang: "Set language (zh/en)",
     exampleBasic: "Analyze staged changes and generate report",
     exampleInteractive: "Interactive mode to select files",
@@ -194,6 +195,7 @@ export const en = {
     analyzing: "{count} staged files detected",
     generating: "Generating Markdown report...",
     reportGenerated: "Report generation complete",
+    reportWriteSkipped: "Skipped writing to file (report copied to clipboard)",
   },
 
   clipboard: {

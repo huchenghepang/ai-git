@@ -131,6 +131,7 @@ ai-git [options]
 | `-s` | Skip sensitive information detection |
 | `-u` | Upload to AI for analysis |
 | `-j` | Force AI to output JSON format (requires `-u`) |
+| `-n`, `--no-write` | Do not write report to file (clipboard only) |
 | `-L`, `--lang <zh|en>` | Set output language (zh=Chinese, en=English, default: auto-detect system language) |
 | `-h` | Show help information |
 
@@ -297,6 +298,8 @@ Steps to add a new language:
 | `AI_MODEL` | AI model name | `deepseek-v4-flash` |
 | `AI_TIMEOUT` | Request timeout (ms) | `30000` |
 | `MAX_CHARS` | Max characters for AI requests | `120000` |
+| `AI_GIT_LANG` | UI language (`zh` or `en`) | Auto-detect system language |
+| `AI_GIT_NO_WRITE` | Set to `1` or `true` to skip writing report to file | Not set (writes file by default) |
 
 ### Environment Variable Configuration Examples
 

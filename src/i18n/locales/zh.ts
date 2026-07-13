@@ -34,6 +34,7 @@ export const zh = {
     optionUploadAi: "上传到 AI 进行分析（需要设置 AI_API_KEY 和 AI_URL）",
     optionForceJson: "强制 AI 输出 JSON 格式（需同时使用 -u）",
     optionHelp: "显示帮助信息",
+    optionNoWrite: "不将报告写入文件（仅复制到剪贴板）",
     optionLang: "设置语言 (zh/en)",
     exampleBasic: "分析暂存区变更并生成报告",
     exampleInteractive: "交互模式选择文件",
@@ -189,6 +190,7 @@ export const zh = {
     analyzing: "检测到 {count} 个暂存文件",
     generating: "生成 Markdown 报告...",
     reportGenerated: "报告生成完成",
+    reportWriteSkipped: "已跳过写入文件（报告已复制到剪贴板）",
   },
 
   clipboard: {

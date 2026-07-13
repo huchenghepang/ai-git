@@ -22,70 +22,198 @@ import {
 // 替换原有的 clipboard 导入
 
 // 创建一个包装函数来处理中文
+/**
+ * 复制文本到剪贴板。
+ * 策略：先写入 UTF-8 文件，再通过系统命令从文件读取 → 复制。
+ * 这样可以避免 pipe 编码问题（尤其是 WSL 中的中文乱码）。
+ */
 async function copyToClipboard(text: string): Promise<boolean> {
-  try {
-    const cleanText = text.replace(/\u0000/g, "");
-    const { execSync } = await import("node:child_process");
-    const platform = process.platform;
+  const cleanText = text.replace(/\u0000/g, "");
+  const { execSync, spawn } = await import("node:child_process");
+  const fs = await import("node:fs");
+  const platform = process.platform;
 
-    if (platform === "win32") {
-      // Windows
-      execSync("clip.exe", { input: cleanText });
-    } else if (platform === "darwin") {
-      // macOS
-      execSync("pbcopy", { input: cleanText });
-    } else if (platform === "linux") {
-      // Linux - 使用系统命令
-      if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
-        console.warn(chalk.yellow(`⚠️ ${t("clipboard.noGui")}`));
-        return false;
-      }
+  // 记录本次操作创建的临时文件/目录，成功后统一清理
+  const tempFilesToClean: string[] = [];
 
-      // 优先使用 xclip (X11)
+  function cmdExists(cmd: string): boolean {
+    try {
+      execSync(`which ${cmd} 2>/dev/null || true`, { stdio: "ignore" });
+      return true;
+    } catch {
       try {
-        execSync("which xclip", { stdio: "ignore" });
-        execSync("xclip -selection clipboard", { input: cleanText });
+        spawn(cmd, ["--version"], { stdio: "ignore" });
         return true;
       } catch {
-        // 尝试 xsel (X11)
-        try {
-          execSync("which xsel", { stdio: "ignore" });
-          execSync("xsel --clipboard --input", { input: cleanText });
-          return true;
-        } catch {
-          // 尝试 wl-copy (Wayland)
-          try {
-            execSync("which wl-copy", { stdio: "ignore" });
-            execSync("wl-copy", { input: cleanText });
-            return true;
-          } catch {
-            console.error(chalk.red(`❌ ${t("clipboard.copyFailed")}:`));
-            console.log(
-              chalk.blue(
-                `💡 ${t("clipboard.installHint")}: sudo pacman -S xclip  (Arch Linux)`,
-              ),
-            );
-            console.log(
-              chalk.blue(
-                `   ${t("common.info").toLowerCase()}: sudo apt install xclip  (Ubuntu/Debian)`,
-              ),
-            );
-            return false;
-          }
-        }
+        return false;
       }
-    } else {
-      console.warn(
-        chalk.yellow(`⚠️ ${t("clipboard.platformNotSupported")}: ${platform}`),
-      );
+    }
+  }
+
+  function cleanup(): void {
+    for (const f of tempFilesToClean) {
+      try {
+        if (fs.existsSync(f)) fs.rmSync(f, { recursive: true, force: true });
+      } catch {
+        // 忽略清理错误
+      }
+    }
+  }
+
+  // ============== Windows ==============
+  if (platform === "win32") {
+    try {
+      // PowerShell：用 -Command 执行 Set-Clipboard
+      const ps = spawn("powershell", [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$input | Set-Clipboard",
+      ]);
+      ps.stdin.write(cleanText);
+      ps.stdin.end();
+      return new Promise<boolean>((resolve) => {
+        ps.on("error", () => resolve(false));
+        ps.on("close", (code) => {
+          if (code === 0) {
+            cleanup();
+            resolve(true);
+          } else {
+            try {
+              execSync("clip", { input: cleanText });
+              cleanup();
+              resolve(true);
+            } catch {
+              resolve(false);
+            }
+          }
+        });
+        setTimeout(() => resolve(false), 5000);
+      });
+    } catch {
+      try {
+        execSync("clip", { input: cleanText });
+        cleanup();
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  }
+
+  // ============== macOS ==============
+  if (platform === "darwin") {
+    try {
+      execSync("pbcopy", { input: cleanText });
+      cleanup();
+      return true;
+    } catch {
       return false;
     }
+  }
 
-    return true;
-  } catch (error: any) {
-    console.error(chalk.red(`❌ ${t("clipboard.copyFailed")}:`), error.message);
+  // ============== Linux（含 WSL） ==============
+  if (platform === "linux") {
+    // —— 方案 A：WSL PowerShell + Base64（最可靠！绕开所有编码问题） ——
+    // 核心思路：把文本用 Base64 编码（纯 ASCII），嵌到 PowerShell 命令里
+    // PowerShell 侧解码 Base64 → UTF8 → 设置剪贴板
+    // 这样完全绕开 Linux ↔ Windows pipe 的编码转换
+    if (cmdExists("powershell.exe")) {
+      try {
+        // 转 UTF-8 字节 → Base64
+        const utf8Bytes = Buffer.from(cleanText, "utf8");
+        const b64 = utf8Bytes.toString("base64");
+
+        // 1) 先尝试整串 Base64 嵌到命令里（适用于 < 8K 的大部分情况）
+        if (b64.length < 8000) {
+          execSync(
+            `powershell.exe -NoProfile -NonInteractive -Command "[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${b64}')) | Set-Clipboard"`,
+            { stdio: "ignore", timeout: 5000 },
+          );
+          cleanup();
+          return true;
+        }
+
+        // 2) 内容太长：写 UTF-8 文件到 /mnt/c/Windows/Temp，让 PowerShell 读
+        const tempName = `ai-git-clip-${Date.now()}.txt`;
+        try {
+          fs.mkdirSync("/mnt/c/Windows/Temp/ai-git-clip", { recursive: true });
+          const tf = `/mnt/c/Windows/Temp/ai-git-clip/${tempName}`;
+          fs.writeFileSync(tf, cleanText, "utf8");
+          tempFilesToClean.push(tf);
+          tempFilesToClean.push("/mnt/c/Windows/Temp/ai-git-clip");
+
+          // 用 wslpath 转成 Windows 路径
+          const winPath = execSync(`wslpath -w "${tf}"`, {
+            encoding: "utf8",
+          }).trim();
+
+          execSync(
+            `powershell.exe -NoProfile -NonInteractive -Command "Get-Content '${winPath}' -Raw -Encoding UTF8 | Set-Clipboard; Remove-Item '${winPath}' -Force"`,
+            { stdio: "ignore", timeout: 5000 },
+          );
+          cleanup();
+          return true;
+        } catch {
+          // 如果写 /mnt/c 失败，回退到方案 B
+        }
+      } catch {
+        // 继续
+      }
+    }
+
+    // —— 方案 B：WSL 回退 —— clip.exe（可能有中文乱码，但可以复制 ASCII）
+    if (cmdExists("clip.exe")) {
+      try {
+        // 用 UTF-8 BOM 让 clip.exe 正确识别编码
+        const withBom = "\ufeff" + cleanText;
+        execSync("clip.exe", { input: withBom, timeout: 3000 });
+        cleanup();
+        return true;
+      } catch {
+        try {
+          execSync("clip.exe", { input: cleanText, timeout: 3000 });
+          cleanup();
+          return true;
+        } catch {
+          // 继续
+        }
+      }
+    }
+
+    // —— 方案 C：原生 Linux 剪贴板工具 ——
+    if (cmdExists("xclip")) {
+      try {
+        execSync("xclip -selection clipboard", { input: cleanText });
+        cleanup();
+        return true;
+      } catch {
+        // 继续
+      }
+    }
+    if (cmdExists("xsel")) {
+      try {
+        execSync("xsel --clipboard --input", { input: cleanText });
+        cleanup();
+        return true;
+      } catch {
+        // 继续
+      }
+    }
+    if (cmdExists("wl-copy")) {
+      try {
+        execSync("wl-copy", { input: cleanText });
+        cleanup();
+        return true;
+      } catch {
+        // 继续
+      }
+    }
+
     return false;
   }
+
+  return false;
 }
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,6 +238,16 @@ const CONFIG = {
    * @default false
    */
   forceJson: false,
+  /**
+   * 是否将报告写入文件
+   * - 默认: true（写入）
+   * - 环境变量 `AI_GIT_NO_WRITE=1` 或 `AI_GIT_NO_WRITE=true` 可禁用
+   * - 命令行 `-n` / `--no-write` 可禁用（最高优先级）
+   * @default true
+   */
+  writeFile:
+    process.env.AI_GIT_NO_WRITE !== "1" &&
+    process.env.AI_GIT_NO_WRITE !== "true",
 };
 
 const EXCLUDE_PATTERNS = [
@@ -445,10 +583,16 @@ async function performAiAnalysis(
 
       aiSection += `### 📝 ${t("ai.result.originalJson")}\n<details>\n<summary>${t("ai.result.expandRaw")}</summary>\n\n\`\`\`json\n${aiRawResult}\n\`\`\`\n</details>\n`;
 
-      fs.appendFileSync(outputFile, aiSection, "utf8");
+      if (outputFile) {
+        fs.appendFileSync(outputFile, aiSection, "utf8");
+      }
       if (recommendation === "approve") {
-        await copyToClipboard(commitMsg);
-        console.log(chalk.green(`✅ ${t("common.copied")}`));
+        const copyOk = await copyToClipboard(commitMsg);
+        if (copyOk) {
+          console.log(chalk.green(`✅ ${t("common.copied")}`));
+        } else {
+          console.log(chalk.yellow(`⚠️ ${t("common.copyFailed")}`));
+        }
       }
     } else {
       // 非 JSON 模式，使用简化解析器
@@ -468,13 +612,19 @@ async function performAiAnalysis(
       let aiSection = `\n## ${t("ai.result.simpleResult")}\n\n`;
       aiSection += `### 💡 ${t("ai.result.suggestedCommit")}\n\`\`\`bash\n${commitMsg}\n\`\`\`\n\n`;
 
-      fs.appendFileSync(outputFile, aiSection, "utf8");
+      if (outputFile) {
+        fs.appendFileSync(outputFile, aiSection, "utf8");
+      }
 
       // 询问是否复制到剪贴板
       const can = await promptUserForCopy(commitMsg);
       if (can) {
-        await copyToClipboard(commitMsg);
-        console.log(chalk.green(`✅ ${t("common.copied")}`));
+        const copyOk = await copyToClipboard(commitMsg);
+        if (copyOk) {
+          console.log(chalk.green(`✅ ${t("common.copied")}`));
+        } else {
+          console.log(chalk.yellow(`⚠️ ${t("common.copyFailed")}`));
+        }
       }
     }
 
@@ -482,11 +632,13 @@ async function performAiAnalysis(
   } catch (error: any) {
     console.error(chalk.red(`❌ ${t("ai.analysisFailed")}:`), error.message);
     // 如果解析失败，把原始结果也追加进去供人工排查
-    fs.appendFileSync(
-      outputFile,
-      `\n## ${t("ai.result.failedSection")}\n\`\`\`text\n${t("common.error")}: ${error.message}\n\n${t("ai.rawResult")}:\n${error.rawResult || t("common.unknown")}\n\`\`\`\n`,
-      "utf8",
-    );
+    if (outputFile) {
+      fs.appendFileSync(
+        outputFile,
+        `\n## ${t("ai.result.failedSection")}\n\`\`\`text\n${t("common.error")}: ${error.message}\n\n${t("ai.rawResult")}:\n${error.rawResult || t("common.unknown")}\n\`\`\`\n`,
+        "utf8",
+      );
+    }
   }
 }
 
@@ -555,6 +707,11 @@ function parseArgs() {
       }
       case "-j": {
         CONFIG.forceJson = true;
+        break;
+      }
+      case "-n":
+      case "--no-write": {
+        CONFIG.writeFile = false;
         break;
       }
       case "-h": {
@@ -627,41 +784,59 @@ export async function runContext() {
   );
 
   // 处理输出路径
-  if (!CONFIG.outputFile) {
-    fs.mkdirSync(CONFIG.outputDir, { recursive: true });
-    const timestamp = new Date()
-      .toISOString()
-      .replaceAll(/[:.]/g, "-")
-      .slice(0, 19);
-    CONFIG.outputFile = path.join(
-      CONFIG.outputDir,
-      `git_context_${timestamp}.md`,
+  if (CONFIG.writeFile) {
+    if (!CONFIG.outputFile) {
+      fs.mkdirSync(CONFIG.outputDir, { recursive: true });
+      const timestamp = new Date()
+        .toISOString()
+        .replaceAll(/[:.]/g, "-")
+        .slice(0, 19);
+      CONFIG.outputFile = path.join(
+        CONFIG.outputDir,
+        `git_context_${timestamp}.md`,
+      );
+    }
+
+    fs.writeFileSync(CONFIG.outputFile, report, "utf8");
+  }
+
+  // 复制到剪贴板
+  const copySuccess = await copyToClipboard(report);
+  if (copySuccess) {
+    console.log(chalk.green(`✅ ${t("common.copiedToClipboard")}`));
+  } else {
+    console.log(chalk.yellow(`⚠️ ${t("common.copyFailed")}`));
+    console.log(
+      chalk.blue(
+        `💡 ${t("clipboard.installHint")}: sudo apt install xclip | sudo pacman -S xclip | sudo dnf install xclip`,
+      ),
     );
   }
 
-  fs.writeFileSync(CONFIG.outputFile, report, "utf8");
-
-  // 复制到剪贴板
-  try {
-    await copyToClipboard(report);
-    console.log(chalk.green(`✅ ${t("common.copiedToClipboard")}`));
-  } catch {
-    console.log(chalk.yellow(`⚠️ ${t("common.copyFailed")}`));
+  if (CONFIG.writeFile) {
+    console.log(
+      chalk.green(
+        `✅ ${t("interactive.reportGenerated")}: ${CONFIG.outputFile}`,
+      ),
+    );
+  } else {
+    console.log(chalk.blue(`ℹ️  ${t("interactive.reportWriteSkipped")}`));
   }
-
-  console.log(
-    chalk.green(`✅ ${t("interactive.reportGenerated")}: ${CONFIG.outputFile}`),
-  );
 
   // AI 分析
   if (CONFIG.uploadToAi) {
-    await performAiAnalysis(report, CONFIG.outputFile, CONFIG.forceJson, {
-      model: AiConfig.aiModel,
-      aiApiKey: AiConfig.aiApiKey,
-      aiModel: AiConfig.aiModel,
-      aiUrl: AiConfig.aiUrl,
-      timeout: AiConfig.timeout,
-    });
+    await performAiAnalysis(
+      report,
+      CONFIG.writeFile ? CONFIG.outputFile : "",
+      CONFIG.forceJson,
+      {
+        model: AiConfig.aiModel,
+        aiApiKey: AiConfig.aiApiKey,
+        aiModel: AiConfig.aiModel,
+        aiUrl: AiConfig.aiUrl,
+        timeout: AiConfig.timeout,
+      },
+    );
   }
 }
 
