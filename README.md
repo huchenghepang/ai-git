@@ -5,6 +5,7 @@ AI-powered Git context analyzer — 自动分析 Git 暂存区变更，生成详
 [![GitHub](https://img.shields.io/badge/GitHub-huchenghepang/ai--git-blue?logo=github)](https://github.com/huchenghepang/ai-git)
 [![npm version](https://img.shields.io/npm/v/@huchenghe/ai-git)](https://www.npmjs.com/package/@huchenghe/ai-git)
 [![License](https://img.shields.io/npm/l/@huchenghe/ai-git)](LICENSE)
+[![en](https://img.shields.io/badge/English-README-informational)](README.en.md)
 
 ## 功能特性
 
