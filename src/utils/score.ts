@@ -2,6 +2,8 @@
 // AI 代码审查响应解析类
 // ============================================
 
+import { t } from "../i18n";
+
 /**
  * 问题严重程度
  */
@@ -83,14 +85,17 @@ class AICodeReviewParser {
     performance: 0,
   };
 
-  private static readonly DEFAULT_DIMENSION_REASON = {
-    code_standard: { score: 0, reason: "无法解析" },
-    complexity: { score: 0, reason: "无法解析" },
-    security: { score: 0, reason: "无法解析" },
-    maintainability: { score: 0, reason: "无法解析" },
-    testing: { score: 0, reason: "无法解析" },
-    performance: { score: 0, reason: "无法解析" },
-  };
+  private static get DEFAULT_DIMENSION_REASON(): ScoreBreakdown {
+    const unableToParse = t("parser.unableToParse");
+    return {
+      code_standard: { score: 0, reason: unableToParse },
+      complexity: { score: 0, reason: unableToParse },
+      security: { score: 0, reason: unableToParse },
+      maintainability: { score: 0, reason: unableToParse },
+      testing: { score: 0, reason: unableToParse },
+      performance: { score: 0, reason: unableToParse },
+    };
+  }
 
   /**
    * 从字符串解析（支持 JSON 字符串或包含 JSON 的文本）
@@ -119,7 +124,7 @@ class AICodeReviewParser {
       const parsed = JSON.parse(jsonStr);
       return this.fromAny(parsed);
     } catch (error) {
-      console.warn("解析 JSON 失败，使用默认值:", error);
+      console.warn(t("parser.jsonParseFailed") + ":", error);
       return this.getDefaultResponse();
     }
   }
@@ -139,10 +144,10 @@ class AICodeReviewParser {
       recommendation: this.parseRecommendation(data.recommendation),
       issues: this.parseIssues(data.issues),
       strengths: this.parseStringArray(data.strengths),
-      summary: this.safeString(data.summary, "无摘要"),
+      summary: this.safeString(data.summary, t("parser.noSummary")),
       commit_message_suggestion: this.safeString(
         data.commit_message_suggestion,
-        "chore: update code",
+        t("parser.defaultCommit"),
       ),
     };
   }
@@ -159,14 +164,14 @@ class AICodeReviewParser {
       );
 
       if (!exists) {
-        console.error(`文件不存在: ${filePath}`);
+        console.error(`${t("parser.fileNotExist")}: ${filePath}`);
         return this.getDefaultResponse();
       }
 
       const content = await fs.readFile(filePath, "utf8");
       return this.fromString(content);
     } catch (error) {
-      console.error(`读取文件失败: ${filePath}`, error);
+      console.error(`${t("parser.readFailed")}: ${filePath}`, error);
       return this.getDefaultResponse();
     }
   }
@@ -212,12 +217,12 @@ class AICodeReviewParser {
    */
   private static parseDimensionScore(score: any): DimensionScore {
     if (!score || typeof score !== "object") {
-      return { score: 0, reason: "无法解析" };
+      return { score: 0, reason: t("parser.unableToParse") };
     }
 
     return {
       score: this.safeNumber(score.score, 0),
-      reason: this.safeString(score.reason, "无原因说明"),
+      reason: this.safeString(score.reason, t("parser.noReason")),
     };
   }
 
@@ -248,8 +253,11 @@ class AICodeReviewParser {
           severity: this.parseSeverity(issue.severity),
           file: this.safeString(issue.file, "unknown"),
           line: this.safeNumber(issue.line, 0),
-          message: this.safeString(issue.message, "无描述"),
-          suggestion: this.safeString(issue.suggestion, "无建议"),
+          message: this.safeString(issue.message, t("parser.noDesc")),
+          suggestion: this.safeString(
+            issue.suggestion,
+            t("parser.noSuggestion"),
+          ),
         };
       })
       .filter((issue): issue is Issue => issue !== null);
@@ -304,8 +312,8 @@ class AICodeReviewParser {
       recommendation: "conditional",
       issues: [],
       strengths: [],
-      summary: "无法解析 AI 响应",
-      commit_message_suggestion: "chore: update code",
+      summary: t("parser.unableParseAi"),
+      commit_message_suggestion: t("parser.defaultCommit"),
     };
   }
 }
@@ -319,7 +327,7 @@ class SimpleCommitParser {
    */
   static fromString(input: string): string {
     if (!input || input.trim() === "") {
-      return "chore: update code";
+      return t("parser.defaultCommit");
     }
 
     // 尝试提取 markdown 代码块中的内容
@@ -349,7 +357,7 @@ class SimpleCommitParser {
    * 从 any 类型解析
    */
   static fromAny(data: any): string {
-    if (!data) return "chore: update code";
+    if (!data) return t("parser.defaultCommit");
 
     if (typeof data === "string") {
       return this.fromString(data);
@@ -364,7 +372,7 @@ class SimpleCommitParser {
       }
     }
 
-    return "chore: update code";
+    return t("parser.defaultCommit");
   }
 }
 
@@ -380,4 +388,3 @@ export {
   type Recommendation,
   type ScoreBreakdown,
 };
-

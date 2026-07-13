@@ -1,17 +1,22 @@
 #!/usr/bin/env node
 
 /**
- * ai-git-review - 快捷命令：完整 AI 代码审查
- * 等价于 ai-git -e -u -j
+ * ai-git-review - Quick command: Full AI code review
+ * Equivalent to ai-git -e -u -j
  */
 import { runContext } from "./git-context";
+import { applyLocaleFromArgs, t } from "./i18n";
 
-// 预置 -e -u -j 参数，复用主入口的参数解析逻辑
+// Preset -e -u -j parameters, reuse main entry's argument parsing logic
 process.argv.push("-e", "-u", "-j");
+
+// Apply locale before running
+const localeArgs = process.argv.slice(2);
+applyLocaleFromArgs(localeArgs);
 
 try {
   await runContext();
 } catch (error) {
-  console.error("❌ 错误:", error);
+  console.error(`❌ ${t("common.error")}:`, error);
   process.exit(1);
 }

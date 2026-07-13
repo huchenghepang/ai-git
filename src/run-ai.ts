@@ -3,12 +3,15 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import AppConfig from "./config";
+import { applyLocaleFromArgs, t } from "./i18n";
 import { requestAi } from "./utils/ai";
 
 async function main() {
   try {
-    // 解析命令行参数
-    const args = process.argv.slice(2);
+    let args = process.argv.slice(2);
+    args = applyLocaleFromArgs(args);
+
+    // Parse command line arguments
     let forceJson = false;
     let prompt = "";
     let filePath = "";
@@ -24,64 +27,66 @@ async function main() {
         i++;
       } else if (args[i] === "--help" || args[i] === "-h") {
         console.log(`
-用法: node run-ai.js [选项] <prompt>
-   或: node run-ai.js [选项] --file <path>
+${t("cli.usage")}: ${t("runAi.usagePrompt")}
+   ${t("common.info").toLowerCase()}: ${t("runAi.usageFile")}
 
-选项:
-  --forceJson, --json    强制输出 JSON 格式
-  --file, -f <path>      从指定文件读取 prompt 内容 (解决命令行参数过长问题)
-  --help, -h             显示帮助信息
+${t("cli.options")}:
+  --forceJson, --json    ${t("runAi.optionForceJson")}
+  --file, -f <path>      ${t("runAi.optionFile")}
+  --help, -h             ${t("runAi.optionHelp")}
 
-示例:
-  node run-ai.js "请写一首诗"
-  node run-ai.js --json "分析这段代码"
-  node run-ai.js --file ./report.md
-  node run-ai.js --json --file ./large-report.md
+${t("cli.examples")}:
+  node run-ai.js "${t("runAi.exampleBasic")}"
+  node run-ai.js --json "${t("runAi.exampleJson")}"
+  node run-ai.js --file ${t("runAi.exampleFile")}
+  node run-ai.js --json --file ${t("runAi.exampleFileJson")}
         `);
         return;
       } else {
-        // 收集所有非选项参数作为 prompt (兼容旧版直接传文本的方式)
+        // Collect all non-option arguments as prompt (compatible with old direct text passing)
         prompt = args.slice(i).join(" ");
         break;
       }
     }
 
-    // 如果指定了文件，则从文件读取内容
+    // If file specified, read content from file
     if (filePath) {
       const absolutePath = resolve(filePath);
       if (!existsSync(absolutePath)) {
-        console.error(`❌ 错误: 找不到文件 ${absolutePath}`);
+        console.error(
+          `❌ ${t("common.error")}: ${t("common.fileNotFound")} ${absolutePath}`,
+        );
         process.exit(1);
       }
       try {
         prompt = readFileSync(absolutePath, "utf8");
         console.error(
-          `📖 已从文件读取内容: ${absolutePath} (${prompt.length} 字符)`,
+          `📖 ${t("runAi.readFromFile")}: ${absolutePath} (${prompt.length} ${t("runAi.chars")})`,
         );
       } catch (error: any) {
-        console.error(`❌ 错误: 读取文件失败 - ${error.message}`);
+        console.error(
+          `❌ ${t("common.error")}: ${t("common.readFileFailed")} - ${error.message}`,
+        );
         process.exit(1);
       }
     }
 
     if (!prompt) {
-      console.error("❌ 错误: 必须提供 prompt 文本或使用 --file 指定文件");
-      console.error(
-        "用法: node run-ai.js [--forceJson] <prompt> 或 node run-ai.js --file <path>",
-      );
+      console.error(`❌ ${t("common.error")}: ${t("runAi.needPrompt")}`);
+      console.error(t("runAi.usageHint"));
       process.exit(1);
     }
 
     const MAX_CHARS = AppConfig.MAX_CHARS;
     if (prompt.length > MAX_CHARS) {
       console.error(
-        `⚠️ 警告: 内容过长 (${prompt.length} 字符)，已截断至 ${MAX_CHARS} 字符以防超出 AI 上下文限制`,
+        `⚠️ ${t("runAi.contentTooLong")} (${prompt.length} ${t("runAi.chars")})，${t("runAi.truncatedHint")} ${MAX_CHARS} ${t("runAi.preventLimit")}`,
       );
-      prompt = `${prompt.slice(0, Math.max(0, MAX_CHARS))}\n\n... [内容已截断]`;
+      prompt = `${prompt.slice(0, Math.max(0, MAX_CHARS))}\n\n... [${t("runAi.contentTooLong")}]`;
     }
 
     console.error(
-      `📤 发送请求... (forceJson: ${forceJson}, 内容长度: ${prompt.length} 字符)`,
+      `📤 ${t("runAi.sendingRequest")} (forceJson: ${forceJson}, ${t("runAi.contentLength")}: ${prompt.length} ${t("runAi.chars")})`,
     );
     const result = await requestAi(
       prompt,
@@ -95,7 +100,7 @@ async function main() {
     );
     console.log(result);
   } catch (error: any) {
-    console.error("❌ 错误:", error.message);
+    console.error(`❌ ${t("common.error")}:`, error.message);
     process.exit(1);
   }
 }

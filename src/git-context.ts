@@ -10,6 +10,7 @@ import chalk from "chalk";
 import { minimatch } from "minimatch";
 import simpleGit, { type SimpleGit } from "simple-git";
 import AiConfig from "./config";
+import { applyLocaleFromArgs, t } from "./i18n";
 import { requestAi } from "./utils/ai";
 import {
   AICodeReviewParser,
@@ -17,6 +18,7 @@ import {
   type Issue,
   type Recommendation,
 } from "./utils/score";
+
 // 替换原有的 clipboard 导入
 
 // 创建一个包装函数来处理中文
@@ -35,7 +37,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
     } else if (platform === "linux") {
       // Linux - 使用系统命令
       if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
-        console.warn(chalk.yellow("⚠️ 警告: 未检测到图形界面，无法使用剪贴板"));
+        console.warn(chalk.yellow(`⚠️ ${t("clipboard.noGui")}`));
         return false;
       }
 
@@ -57,25 +59,31 @@ async function copyToClipboard(text: string): Promise<boolean> {
             execSync("wl-copy", { input: cleanText });
             return true;
           } catch {
-            console.error(chalk.red("❌ 复制失败: 未找到剪贴板工具"));
+            console.error(chalk.red(`❌ ${t("clipboard.copyFailed")}:`));
             console.log(
-              chalk.blue("💡 请安装: sudo pacman -S xclip  (Arch Linux)"),
+              chalk.blue(
+                `💡 ${t("clipboard.installHint")}: sudo pacman -S xclip  (Arch Linux)`,
+              ),
             );
             console.log(
-              chalk.blue("   或: sudo apt install xclip  (Ubuntu/Debian)"),
+              chalk.blue(
+                `   ${t("common.info").toLowerCase()}: sudo apt install xclip  (Ubuntu/Debian)`,
+              ),
             );
             return false;
           }
         }
       }
     } else {
-      console.warn(chalk.yellow(`⚠️ 不支持的操作系统: ${platform}`));
+      console.warn(
+        chalk.yellow(`⚠️ ${t("clipboard.platformNotSupported")}: ${platform}`),
+      );
       return false;
     }
 
     return true;
   } catch (error: any) {
-    console.error(chalk.red("❌ 复制失败:"), error.message);
+    console.error(chalk.red(`❌ ${t("clipboard.copyFailed")}:`), error.message);
     return false;
   }
 }
@@ -207,21 +215,21 @@ async function generateMarkdownReport(
     branchName = await git.revparse(["--abbrev-ref", "HEAD"]);
   } catch (error) {
     // 空仓库，HEAD 不存在
-    chalk.red("空仓库，HEAD 不存在");
-    throw new Error("空仓库，HEAD 不存在");
+    chalk.red(t("report.emptyRepo"));
+    throw new Error(t("report.emptyRepo"));
   }
 
-  let report = `# Git 变更分析报告\n`;
-  report += `- 生成时间: ${new Date().toLocaleString()}\n`;
-  report += `- 仓库: ${path.basename(await git.revparse(["--show-toplevel"]))}\n`;
-  report += `- 分支: ${await git.revparse(["--abbrev-ref", "HEAD"])}\n\n`;
+  let report = `# ${t("report.title")}\n`;
+  report += `- ${t("report.generatedAt")}: ${new Date().toLocaleString()}\n`;
+  report += `- ${t("report.repo")}: ${path.basename(await git.revparse(["--show-toplevel"]))}\n`;
+  report += `- ${t("report.branch")}: ${await git.revparse(["--abbrev-ref", "HEAD"])}\n\n`;
 
-  report += `## 一、变更概览\n### 统计信息\n\`\`\`\n${shortstat}\n\`\`\`\n\n`;
-  report += `### 变更文件列表\n\`\`\`\n${nameStatus}\n\`\`\`\n\n`;
-  report += `## 二、代码变更详情 (git diff --cached)\n\`\`\`diff\n${diffContent}\n\`\`\`\n\n`;
+  report += `## ${t("report.section1")}\n### ${t("report.statsInfo")}\n\`\`\`\n${shortstat}\n\`\`\`\n\n`;
+  report += `### ${t("report.fileList")}\n\`\`\`\n${nameStatus}\n\`\`\`\n\n`;
+  report += `## ${t("report.section2")}\n\`\`\`diff\n${diffContent}\n\`\`\`\n\n`;
 
   if (CONFIG.includeFullFiles) {
-    report += `## 三、涉及文件的完整内容（仅暂存区文件）\n\n`;
+    report += `## ${t("report.section3")}\n\n`;
 
     for (const file of stagedFiles) {
       if (!shouldIncludeFile(file)) continue;
@@ -238,10 +246,10 @@ async function generateMarkdownReport(
 
         let content: string;
         if (status === "D") {
-          content = `[file deleted]`;
+          content = t("report.fileDeleted");
         } else {
           if (!fs.existsSync(file)) {
-            content = `[file not found]`;
+            content = t("report.fileNotExist");
           } else {
             content = fs.readFileSync(file, "utf8");
           }
@@ -253,17 +261,17 @@ async function generateMarkdownReport(
         if (status !== "D" && CONFIG.redactSensitive)
           content = redactContent(content);
 
-        report += `### 文件: ${file} [${status}, ${lines} 行]\n\`\`\`${lang}\n`;
+        report += `### ${t("report.fileLabel")}: ${file} [${status}, ${lines} ${t("report.linesLabel")}]\n\`\`\`${lang}\n`;
         if (status === "D" || lines <= CONFIG.maxFileSize) {
           report += content;
         } else {
           report += content.split("\n").slice(0, CONFIG.maxFileSize).join("\n");
-          report += `\n// ... [截断，共 ${lines} 行，仅显示前 ${CONFIG.maxFileSize} 行]\n`;
+          report += `\n// ... [${t("report.truncatedHint")} ${lines} ${t("report.linesLabel")}, ${t("report.truncatedSuffix")} ${CONFIG.maxFileSize} ${t("report.truncatedEnd")}]\n`;
         }
         report += `\n\`\`\`\n\n`;
       } catch (error) {
-        console.error("read file:", file, "failed:", error);
-        continue;
+        console.error(`${t("common.readFileFailed")}:`, error);
+        // 忽略读取失败的文件（如已删除的文件）
       }
     }
   }
@@ -286,7 +294,7 @@ async function performAiAnalysis(
     timeout: number;
   },
 ) {
-  console.log(chalk.blue("⚙️  正在调用 AI 分析代码变更..."));
+  console.log(chalk.blue(`⚙️  ${t("ai.calling")}`));
 
   try {
     // 1. 直接调用 AI 接口
@@ -302,7 +310,7 @@ async function performAiAnalysis(
     );
 
     if (!aiRawResult || aiRawResult.trim() === "")
-      throw new Error("AI 返回为空");
+      throw new Error(t("ai.emptyResponse"));
 
     let commitMsg = "";
     let score = 0;
@@ -325,28 +333,49 @@ async function performAiAnalysis(
 
       // 控制台友好输出
       console.log(chalk.green("\n==========================================="));
-      console.log(chalk.green("📊 AI 代码审查结果摘要"));
+      console.log(chalk.green(`📊 ${t("ai.result.summary")}`));
       console.log(chalk.green("==========================================="));
-      console.log(chalk.blue(`💡 建议的 Commit Message:`), commitMsg);
-      console.log(chalk.blue(`⭐ 代码质量评分:`), `${score}/100`);
+      console.log(
+        chalk.blue(`💡 ${t("ai.result.suggestedCommit")}:`),
+        commitMsg,
+      );
+      console.log(
+        chalk.blue(`⭐ ${t("ai.result.codeQuality")}:`),
+        `${score}/100`,
+      );
 
       switch (recommendation) {
         case "approve":
-          console.log(chalk.blue("✅ 推荐结论: 可以提交 (approve)"));
+          console.log(
+            chalk.blue(
+              `✅ ${t("ai.result.recommendationLabel")}: ${t("ai.result.approve")}`,
+            ),
+          );
           break;
         case "conditional":
-          console.log(chalk.yellow("⚠️ 推荐结论: 条件通过 (conditional)"));
+          console.log(
+            chalk.yellow(
+              `⚠️ ${t("ai.result.recommendationLabel")}: ${t("ai.result.conditional")}`,
+            ),
+          );
           break;
         case "reject":
-          console.log(chalk.red("❌ 推荐结论: 不建议提交 (reject)"));
+          console.log(
+            chalk.red(
+              `❌ ${t("ai.result.recommendationLabel")}: ${t("ai.result.reject")}`,
+            ),
+          );
           break;
         default:
-          console.log(chalk.blue("📝 推荐结论:"), recommendation);
+          console.log(
+            chalk.blue(`📝 ${t("ai.result.recommendationLabel")}:`),
+            recommendation,
+          );
       }
 
       // 显示代码亮点
       if (strengths.length > 0) {
-        console.log(chalk.green("\n✨ 代码亮点:"));
+        console.log(chalk.green(`\n✨ ${t("ai.result.highlights")}:`));
         strengths.forEach((s) => console.log(`  - ${s}`));
       }
 
@@ -357,21 +386,21 @@ async function performAiAnalysis(
         const lowIssues = issues.filter((i) => i.severity === "low");
 
         if (highIssues.length > 0) {
-          console.log(chalk.red("\n❌ 高优先级问题:"));
+          console.log(chalk.red(`\n❌ ${t("ai.result.highPriority")}:`));
           highIssues.forEach((i) =>
             console.log(`  - ${i.file}:${i.line} - ${i.message}`),
           );
         }
 
         if (mediumIssues.length > 0) {
-          console.log(chalk.yellow("\n⚠️ 中优先级问题:"));
+          console.log(chalk.yellow(`\n⚠️ ${t("ai.result.mediumPriority")}:`));
           mediumIssues.forEach((i) =>
             console.log(`  - ${i.file}:${i.line} - ${i.message}`),
           );
         }
 
         if (lowIssues.length > 0) {
-          console.log(chalk.blue("\nℹ️ 低优先级问题:"));
+          console.log(chalk.blue(`\nℹ️ ${t("ai.result.lowPriority")}:`));
           lowIssues.forEach((i) =>
             console.log(`  - ${i.file}:${i.line} - ${i.message}`),
           );
@@ -381,16 +410,16 @@ async function performAiAnalysis(
       console.log(chalk.green("===========================================\n"));
 
       // 追加到 Markdown 报告
-      let aiSection = `\n## 五、AI 代码审查报告\n\n`;
-      aiSection += `### 💡 建议的 Commit Message\n\`\`\`bash\n${commitMsg}\n\`\`\`\n\n`;
-      aiSection += `### 📊 结果摘要\n`;
-      aiSection += `- 总分: ${score}/100\n`;
-      aiSection += `- 推荐: ${recommendation}\n`;
-      aiSection += `- 摘要: ${summary}\n\n`;
+      let aiSection = `\n## ${t("ai.result.failedSection").replace(" (解析失败)", "")}\n\n`;
+      aiSection += `### 💡 ${t("ai.result.suggestedCommit")}\n\`\`\`bash\n${commitMsg}\n\`\`\`\n\n`;
+      aiSection += `### 📊 ${t("ai.result.summary").replace("摘要", "")}\n`;
+      aiSection += `- ${t("ai.result.codeQuality")}: ${score}/100\n`;
+      aiSection += `- ${t("ai.result.recommendationLabel")}: ${recommendation}\n`;
+      aiSection += `- ${t("parser.noSummary").replace("无摘要", "Summary")}: ${summary}\n\n`;
 
       // 添加代码亮点
       if (strengths.length > 0) {
-        aiSection += `### ✨ 代码亮点\n`;
+        aiSection += `### ✨ ${t("ai.result.highlights")}\n`;
         strengths.forEach((s) => {
           aiSection += `- ${s}\n`;
         });
@@ -399,8 +428,8 @@ async function performAiAnalysis(
 
       // 添加问题列表
       if (issues.length > 0) {
-        aiSection += `### ⚠️ 发现的问题\n\n`;
-        aiSection += `| 严重程度 | 文件 | 行号 | 问题描述 | 修复建议 |\n`;
+        aiSection += `### ⚠️ ${t("ai.result.issues")}\n\n`;
+        aiSection += `| ${t("ai.result.severity")} | ${t("ai.result.fileName")} | ${t("ai.result.lineNo")} | ${t("ai.result.description")} | ${t("ai.result.suggestion")} |\n`;
         aiSection += `|---------|------|------|---------|---------|\n`;
         issues.forEach((issue) => {
           const severityIcon =
@@ -414,12 +443,12 @@ async function performAiAnalysis(
         aiSection += `\n`;
       }
 
-      aiSection += `### 📝 AI 原始返回 (JSON)\n<details>\n<summary>点击展开原始 JSON</summary>\n\n\`\`\`json\n${aiRawResult}\n\`\`\`\n</details>\n`;
+      aiSection += `### 📝 ${t("ai.result.originalJson")}\n<details>\n<summary>${t("ai.result.expandRaw")}</summary>\n\n\`\`\`json\n${aiRawResult}\n\`\`\`\n</details>\n`;
 
-      fs.appendFileSync(outputFile, aiSection, "utf-8");
+      fs.appendFileSync(outputFile, aiSection, "utf8");
       if (recommendation === "approve") {
         await copyToClipboard(commitMsg);
-        console.log(chalk.green("✅ 已复制到剪贴板！"));
+        console.log(chalk.green(`✅ ${t("common.copied")}`));
       }
     } else {
       // 非 JSON 模式，使用简化解析器
@@ -427,33 +456,36 @@ async function performAiAnalysis(
 
       // 控制台输出
       console.log(chalk.green("\n==========================================="));
-      console.log(chalk.green("📊 AI 分析结果"));
+      console.log(chalk.green(`📊 ${t("ai.result.simpleResult")}`));
       console.log(chalk.green("==========================================="));
-      console.log(chalk.blue(`💡 建议的 Commit Message:`), commitMsg);
+      console.log(
+        chalk.blue(`💡 ${t("ai.result.suggestedCommit")}:`),
+        commitMsg,
+      );
       console.log(chalk.green("===========================================\n"));
 
       // 追加到 Markdown 报告
-      let aiSection = "\n## 五、AI 分析结果\n\n";
-      aiSection += `### 💡 建议的 Commit Message\n\`\`\`bash\n${commitMsg}\n\`\`\`\n\n`;
+      let aiSection = `\n## ${t("ai.result.simpleResult")}\n\n`;
+      aiSection += `### 💡 ${t("ai.result.suggestedCommit")}\n\`\`\`bash\n${commitMsg}\n\`\`\`\n\n`;
 
-      fs.appendFileSync(outputFile, aiSection, "utf-8");
+      fs.appendFileSync(outputFile, aiSection, "utf8");
 
       // 询问是否复制到剪贴板
       const can = await promptUserForCopy(commitMsg);
       if (can) {
         await copyToClipboard(commitMsg);
-        console.log(chalk.green("✅ 已复制到剪贴板！"));
+        console.log(chalk.green(`✅ ${t("common.copied")}`));
       }
     }
 
-    console.log(chalk.green("✅ AI 分析结果已追加到报告"));
+    console.log(chalk.green(`✅ ${t("ai.result.appendedToReport")}`));
   } catch (error: any) {
-    console.error(chalk.red("❌ AI 分析或解析失败:"), error.message);
+    console.error(chalk.red(`❌ ${t("ai.analysisFailed")}:`), error.message);
     // 如果解析失败，把原始结果也追加进去供人工排查
     fs.appendFileSync(
       outputFile,
-      `\n## 五、AI 代码审查报告 (解析失败)\n\`\`\`text\n错误: ${error.message}\n\n原始返回:\n${error.rawResult || "无"}\n\`\`\`\n`,
-      "utf-8",
+      `\n## ${t("ai.result.failedSection")}\n\`\`\`text\n${t("common.error")}: ${error.message}\n\n${t("ai.rawResult")}:\n${error.rawResult || t("common.unknown")}\n\`\`\`\n`,
+      "utf8",
     );
   }
 }
@@ -463,8 +495,11 @@ async function performAiAnalysis(
 // ============================================
 function parseArgs() {
   const args = process.argv.slice(2);
-  for (let i = 0; i < args.length; i++) {
-    switch (args[i]) {
+  // 应用语言设置（同时从 args 中移除语言参数）
+  const filteredArgs = applyLocaleFromArgs(args);
+
+  for (let i = 0; i < filteredArgs.length; i++) {
+    switch (filteredArgs[i]) {
       case "-a": {
         CONFIG.includeFullFiles = true;
         CONFIG.maxFileSize = 999_999;
@@ -475,7 +510,7 @@ function parseArgs() {
         break;
       }
       case "-f": {
-        const temp = args[++i];
+        const temp = filteredArgs[++i];
         if (temp) {
           CONFIG.maxFileSize = Number.parseInt(temp);
         }
@@ -486,21 +521,21 @@ function parseArgs() {
         break;
       }
       case "-l": {
-        const temp = args[++i];
+        const temp = filteredArgs[++i];
         if (temp) {
           CONFIG.diffContext = Number.parseInt(temp);
         }
         break;
       }
       case "-m": {
-        const temp = args[++i];
+        const temp = filteredArgs[++i];
         if (temp) {
           CONFIG.outputFormat = temp;
         }
         break;
       }
       case "-o": {
-        const temp = args[++i];
+        const temp = filteredArgs[++i];
         if (temp) {
           CONFIG.outputFile = temp;
         }
@@ -523,11 +558,8 @@ function parseArgs() {
         break;
       }
       case "-h": {
-        console.log("用法: node git-context.js [选项]");
-        console.log(
-          "选项: -a(完整) -f(截断行数) -l(diff上下文) -o(输出文件) -m(格式) -i(交互) -s(跳过检测) -r(跳过脱敏) -e(AI分析) -u(上传AI) -j(强制输出 JSON)",
-        );
-        process.exit(0);
+        // 已在 index.ts 中处理，这里只是防止进入主流程
+        break;
       }
     }
   }
@@ -538,7 +570,9 @@ export async function runContext() {
   const git = simpleGit();
 
   if (!(await git.checkIsRepo())) {
-    console.error(chalk.red("❌ 错误: 当前目录不是 Git 仓库"));
+    console.error(
+      chalk.red(`❌ ${t("common.error")}: ${t("common.notGitRepo")}`),
+    );
     process.exit(1);
   }
 
@@ -546,18 +580,16 @@ export async function runContext() {
   let stagedFiles = tempStagedFiles.split("\n").filter(Boolean);
 
   if (stagedFiles.length === 0) {
-    console.log(chalk.yellow("⚠️ 没有暂存的文件"));
+    console.log(chalk.yellow(`⚠️ ${t("common.noStagedFiles")}`));
     process.exit(0);
   }
 
   // 交互模式
   if (CONFIG.interactive) {
     const rl = readline.createInterface({ input, output });
-    console.log(chalk.blue("\n📋 暂存文件列表:"));
+    console.log(chalk.blue(`\n📋 ${t("interactive.stagedFiles")}:`));
     stagedFiles.forEach((f, i) => console.log(`  ${i + 1}) ${f}`));
-    const answer = await rl.question(
-      "请输入要包含的文件编号（空格分隔，或 a 全选）: ",
-    );
+    const answer = await rl.question(`${t("interactive.selectPrompt")}: `);
     rl.close();
 
     if (answer.toLowerCase() !== "a") {
@@ -572,7 +604,9 @@ export async function runContext() {
   }
 
   console.log(
-    chalk.green(`[Git 变更分析器] 检测到 ${stagedFiles.length} 个暂存文件`),
+    chalk.green(
+      `[Git ${t("cli.title").split(" - ")[0].replace("ai-git", "")}] ${t("interactive.analyzing").replace("{count}", String(stagedFiles.length))}`,
+    ),
   );
 
   // 获取 Git 数据
@@ -581,7 +615,7 @@ export async function runContext() {
   const nameStatus = await git.diff(["--cached", "--name-status"]);
 
   // 生成报告
-  console.log(chalk.blue("⚙️  生成 Markdown 报告..."));
+  console.log(chalk.blue(`⚙️  ${t("interactive.generating")}`));
   const report = await generateMarkdownReport(
     git,
     stagedFiles,
@@ -605,17 +639,19 @@ export async function runContext() {
     );
   }
 
-  fs.writeFileSync(CONFIG.outputFile, report, "utf-8");
+  fs.writeFileSync(CONFIG.outputFile, report, "utf8");
 
   // 复制到剪贴板
   try {
     await copyToClipboard(report);
-    console.log(chalk.green("✅ 已成功复制到系统剪贴板！"));
+    console.log(chalk.green(`✅ ${t("common.copiedToClipboard")}`));
   } catch {
-    console.log(chalk.yellow("⚠️ 自动复制失败，请手动复制"));
+    console.log(chalk.yellow(`⚠️ ${t("common.copyFailed")}`));
   }
 
-  console.log(chalk.green(`✅ 报告生成完成: ${CONFIG.outputFile}`));
+  console.log(
+    chalk.green(`✅ ${t("interactive.reportGenerated")}: ${CONFIG.outputFile}`),
+  );
 
   // AI 分析
   if (CONFIG.uploadToAi) {
@@ -634,22 +670,22 @@ export async function runContext() {
  */
 function generateCommitMessagePrompt(): string {
   return `
-## 四、AI 生成指令
+## ${t("ai.prompt.sectionTitle")}
 
-请根据以上代码变更生成 Commit Message：
+${t("ai.prompt.commitMsgTitle")}
 
-**格式要求：**
-- 格式: \`<type>(<scope>): <subject>\`
-- type: feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert
-- subject: 中文或英文，≤50字符
-- body: 2-4行说明变更原因
+**${t("ai.prompt.formatReq")}**:
+- ${t("ai.prompt.formatDesc")}: \`<type>(<scope>): <subject>\`
+- ${t("ai.prompt.typeDesc")}
+- ${t("ai.prompt.subjectDesc")}
+- ${t("ai.prompt.bodyDesc")}
 
-**输出要求：**
-- 只输出 commit message
-- 不要额外解释
-- 不要代码块标记
+**${t("ai.prompt.outputReq")}**:
+- ${t("ai.prompt.outputDesc1")}
+- ${t("ai.prompt.outputDesc2")}
+- ${t("ai.prompt.outputDesc3")}
 
-**输出示例：**
+**${t("ai.prompt.outputExample")}**:
 feat(utils): add AI request and URL parsing utilities
 
 - Add requestAi function for API calls
@@ -684,22 +720,22 @@ function generateAIAnalysisPrompt(includeFullAnalysis: boolean = true): string {
   if (!includeFullAnalysis) {
     // 简化版：只生成 commit message
     return `
-## 四、AI 生成指令
+## ${t("ai.prompt.sectionTitle")}
 
-请根据以上代码变更生成 Commit Message：
+${t("ai.prompt.commitMsgTitle")}
 
-**格式要求：**
-- 格式: \`<type>(<scope>): <subject>\`
-- type: feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert
-- subject: 中文或英文，≤50字符
-- body: 2-4行说明变更原因
+**${t("ai.prompt.formatReq")}**:
+- ${t("ai.prompt.formatDesc")}: \`<type>(<scope>): <subject>\`
+- ${t("ai.prompt.typeDesc")}
+- ${t("ai.prompt.subjectDesc")}
+- ${t("ai.prompt.bodyDesc")}
 
-**输出要求：**
-- 只输出 commit message
-- 不要额外解释
-- 不要代码块标记
+**${t("ai.prompt.outputReq")}**:
+- ${t("ai.prompt.outputDesc1")}
+- ${t("ai.prompt.outputDesc2")}
+- ${t("ai.prompt.outputDesc3")}
 
-**输出示例：**
+**${t("ai.prompt.outputExample")}**:
 feat(utils): add AI request and URL parsing utilities
 
 - Add requestAi function for API calls
@@ -710,44 +746,33 @@ feat(utils): add AI request and URL parsing utilities
 
   // 完整版：包含代码质量评估的 JSON 格式输出
   return `
-## 代码变更质量分析任务
+## ${t("ai.prompt.analysisTask")}
 
-你是一个专业的代码审查专家，请对以上 Git 暂存区的代码变更进行全面的质量评估。
+${t("ai.prompt.analysisIntro")}
 
-### 评估维度（总分100分）
+### ${t("ai.prompt.evalDimensions")}
 
-#### 1. 代码规范 (15分)
-- 命名规范（变量、函数、类名是否清晰有意义）
-- 缩进和格式是否统一
-- 是否遵循语言最佳实践
+#### 1. ${t("ai.prompt.codeStandard")} (15 ${t("common.info").toLowerCase() === "info" ? "points" : t("common.info")})
+- ${t("ai.prompt.codeStandardDesc")}
 
-#### 2. 代码复杂度 (25分)
-- 圈复杂度是否过高
-- 函数长度是否合理（建议 ≤50 行）
-- 嵌套层级是否过深（建议 ≤3 层）
+#### 2. ${t("ai.prompt.complexity")} (25 points)
+- ${t("ai.prompt.complexityDesc")}
 
-#### 3. 安全性 (20分)
-- 是否有 SQL 注入/XSS 风险
-- 敏感信息是否正确处理
-- 输入验证是否充分
+#### 3. ${t("ai.prompt.security")} (20 points)
+- ${t("ai.prompt.securityDesc")}
 
-#### 4. 可维护性 (15分)
-- 代码是否易于理解和修改
-- 是否有适当的注释
-- 是否有硬编码值
+#### 4. ${t("ai.prompt.maintainability")} (15 points)
+- ${t("ai.prompt.maintainabilityDesc")}
 
-#### 5. 测试覆盖 (15分)
-- 是否便于测试
-- 是否有边界条件处理
-- 错误处理是否完善
+#### 5. ${t("ai.prompt.testing")} (15 points)
+- ${t("ai.prompt.testingDesc")}
 
-#### 6. 性能影响 (10分)
-- 是否有明显的性能问题
-- 算法复杂度是否合理
+#### 6. ${t("ai.prompt.performance")} (10 points)
+- ${t("ai.prompt.performanceDesc")}
 
-### 输出格式要求
+### ${t("ai.prompt.outputFormat")}
 
-请**严格**按以下 JSON 格式输出，不要包含任何额外解释、思考过程或 markdown 标记：
+${t("ai.prompt.outputFormatDesc")}:
 
 {
   "total_score": 85,
@@ -762,27 +787,27 @@ feat(utils): add AI request and URL parsing utilities
   "score_breakdown": {
     "code_standard": {
       "score": 12,
-      "reason": "代码规范符合最佳实践"
+      "reason": "Code standards follow best practices"
     },
     "complexity": {
       "score": 20,
-      "reason": "代码复杂度符合要求"
+      "reason": "Code complexity meets requirements"
     },
     "security": {
       "score": 18,
-      "reason": "代码符合安全规范"
+      "reason": "Code meets security standards"
     },
     "maintainability": {
       "score": 13,
-      "reason": "代码可维护性符合要求"
+      "reason": "Code maintainability meets requirements"
     },
     "testing": {
       "score": 12,
-      "reason": "代码测试覆盖符合要求"
+      "reason": "Code test coverage meets requirements"
     },
     "performance": {
       "score": 10,
-      "reason": "代码性能影响符合要求"
+      "reason": "Code performance impact meets requirements"
     }
   },
   "recommendation": "approve",
@@ -791,27 +816,27 @@ feat(utils): add AI request and URL parsing utilities
       "severity": "high",
       "file": "src/auth.js",
       "line": 45,
-      "message": "问题描述",
-      "suggestion": "修复建议"
+      "message": "Issue description",
+      "suggestion": "Fix suggestion"
     }
   ],
-  "strengths": ["代码亮点1", "代码亮点2"],
-  "summary": "总体评价摘要",
+  "strengths": ["Strength 1", "Strength 2"],
+  "summary": "Overall evaluation summary",
   "commit_message_suggestion": "feat(scope): subject"
 }
 
-### 评分标准
-- 90-100分：优秀，直接提交
-- 70-89分：良好，建议修复中低优先级问题
-- 50-69分：及格，必须修复高优先级问题
-- 0-49分：不合格，不建议提交
+### ${t("ai.prompt.scoreStandard")}
+- 90-100 ${t("ai.prompt.scoreExcellent")}
+- 70-89 ${t("ai.prompt.scoreGood")}
+- 50-69 ${t("ai.prompt.scorePass")}
+- 0-49 ${t("ai.prompt.scoreFail")}
 
-### recommendation 说明
-- "approve": 总分 ≥80 且无高优先级问题
-- "conditional": 总分 60-79 或有中优先级问题
-- "reject": 总分 <60 或存在高优先级安全问题
+### ${t("ai.prompt.recommendation")}
+- "approve": ${t("ai.result.codeQuality")} ≥80 ${t("common.info") === "Info" ? "and" : t("common.info")} no high-priority issues
+- "conditional": ${t("ai.result.codeQuality")} 60-79 ${t("common.info") === "Info" ? "or" : t("common.info")} has medium-priority issues
+- "reject": ${t("ai.result.codeQuality")} <60 ${t("common.info") === "Info" ? "or" : t("common.info")} has high-priority security issues
 
-**重要：只输出纯 JSON 对象，不要输出任何其他内容（包括 markdown 代码块标记、思考过程、解释文字等）。**
+**${t("ai.prompt.importantNote")}**
 `;
 }
 
@@ -819,7 +844,7 @@ async function promptUserForCopy(text: string): Promise<boolean> {
   const rl = readline.createInterface({ input, output });
   try {
     const answer = await rl.question(
-      `是否将以下内容复制到剪贴板？\n${text}\n(y/n): `,
+      `${t("common.askCopy")}\n${text}\n${t("common.confirmCopy")}: `,
     );
     return answer.trim().toLowerCase() === "y";
   } finally {

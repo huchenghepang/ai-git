@@ -21,7 +21,7 @@
     "release": "node scripts/publish.mjs",
     "prepublishOnly": "bun run build",
     "prepack": "bun run build",
-    "start": "bun src/index.ts"
+    "start": "bun src/index.ts -e -j -u"
   },
   "keywords": [
     "git",

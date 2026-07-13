@@ -15,6 +15,7 @@ AI-powered Git context analyzer — 自动分析 Git 暂存区变更，生成详
 - ✅ **AI 集成** — 自动调用 AI 生成 Commit Message 和代码审查
 - ✅ **剪贴板复制** — 自动复制报告或 Commit Message 到剪贴板
 - ✅ **独立 AI 工具** — 提供独立的 `ai-run` 命令直接调用 AI 接口
+- ✅ **多语言支持** — 支持中文（zh）和英文（en），可自动检测系统语言或手动设置
 
 ## 安装
 
@@ -129,6 +130,7 @@ ai-git [选项]
 | `-s` | 跳过敏感信息检测 |
 | `-u` | 上传到 AI 进行分析 |
 | `-j` | 强制 AI 输出 JSON 格式（需同时使用 `-u`） |
+| `-L`, `--lang <zh|en>` | 设置输出语言（zh=中文，en=英文，默认自动检测系统语言） |
 | `-h` | 显示帮助信息 |
 
 **使用示例：**
@@ -154,6 +156,15 @@ ai-git -i -u -j
 
 # 包含完整文件内容
 ai-git -a
+
+# 切换语言为英文
+ai-git -L en
+
+# 切换语言为中文
+ai-git --lang zh
+
+# 英文 + AI 代码审查
+ai-git -L en -u -j
 ```
 
 ### `ai-git-review` — 快捷命令：一键 AI 代码审查 🚀
@@ -191,6 +202,90 @@ ai-run --file ./prompt.txt
 # 强制 JSON 输出
 ai-run --json "分析这段代码"
 ```
+
+## 多语言设置 🌐
+
+ai-git 支持**中文（zh）**和**英文（en）**两种语言，界面文本（终端输出、帮助信息、报告标题、提示文案等）会根据当前语言设置切换。
+
+### 设置方式（优先级从高到低）
+
+1. **命令行参数（最高优先级）**
+   ```bash
+   # 使用英文
+   ai-git -L en
+   ai-git --lang en
+
+   # 使用中文
+   ai-git -L zh
+   ai-git --lang zh
+
+   # 与其他参数组合使用
+   ai-git -L en -u -j       # 英文 AI 代码审查
+   ai-git -L zh -i           # 中文交互模式
+   ```
+
+2. **环境变量 `AI_GIT_LANG`**
+   ```bash
+   # 当前会话生效
+   export AI_GIT_LANG=en
+   ai-git
+
+   # 单次命令生效
+   AI_GIT_LANG=en ai-git -u
+   ```
+
+3. **系统语言自动检测（默认）**
+   - 若 `LANG` / `LC_ALL` 以 `zh` 开头（如 `zh_CN.UTF-8`）→ 使用中文
+   - 其他情况 → 使用英文
+
+### 受影响的内容
+
+| 项目 | 说明 |
+|------|------|
+| 终端输出 | 提示信息、成功/失败文案、帮助信息（`-h`） |
+| Markdown 报告 | 报告标题、各章节标题、状态说明、截断提示 |
+| AI 提示词模板 | 发送给 AI 的生成指令（commit message / code review） |
+| 代码审查解析器 | 失败时的默认回退文案 |
+
+### 支持的语言列表
+
+| 值 | 语言 | 说明 |
+|----|------|------|
+| `zh` | 中文 | 简体中文界面 |
+| `en` | 英文 | English interface |
+
+### 开发者：添加新语言（项目贡献指南）
+
+翻译资源位于 `src/i18n/locales/` 目录，结构如下：
+
+```
+src/i18n/
+├── index.ts          # 核心 i18n 模块（语言检测、参数解析、t() 翻译函数）
+└── locales/
+    ├── zh.ts         # 中文翻译
+    └── en.ts         # 英文翻译
+```
+
+添加新语言的步骤：
+
+1. 在 `src/i18n/locales/` 下新建 `xx.ts`（xx 为语言代码，如 `ja`/`ko`/`fr`）
+2. 参考 `zh.ts` 或 `en.ts`，翻译所有 key（`report.*`、`ai.*`、`cli.*` 等）
+3. 在 `src/i18n/index.ts` 中注册：
+   ```typescript
+   import { xx } from "./locales/xx";
+
+   const translations: Record<Locale, TranslationKeys> = {
+     zh,
+     en,
+     xx, // 新增
+   };
+
+   export type Locale = "zh" | "en" | "xx";
+   ```
+4. 在 `detectLocale()` 中添加相应的系统语言匹配规则
+5. 执行 `bun run build` 构建并测试
+
+---
 
 ## 环境变量
 
