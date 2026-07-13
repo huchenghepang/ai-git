@@ -236,24 +236,34 @@ async function generateMarkdownReport(
 
         const status = statusMatch ? statusMatch[1] : "M";
 
-        let content = fs.readFileSync(file, "utf8");
+        let content: string;
+        if (status === "D") {
+          content = `[file deleted]`;
+        } else {
+          if (!fs.existsSync(file)) {
+            content = `[file not found]`;
+          } else {
+            content = fs.readFileSync(file, "utf8");
+          }
+        }
 
         const lines = content.split("\n").length;
-        const lang = getFileLang(file);
+        const lang = status === "D" ? "text" : getFileLang(file);
 
-        if (CONFIG.redactSensitive) content = redactContent(content);
+        if (status !== "D" && CONFIG.redactSensitive)
+          content = redactContent(content);
 
         report += `### 文件: ${file} [${status}, ${lines} 行]\n\`\`\`${lang}\n`;
-        if (lines > CONFIG.maxFileSize) {
+        if (status === "D" || lines <= CONFIG.maxFileSize) {
+          report += content;
+        } else {
           report += content.split("\n").slice(0, CONFIG.maxFileSize).join("\n");
           report += `\n// ... [截断，共 ${lines} 行，仅显示前 ${CONFIG.maxFileSize} 行]\n`;
-        } else {
-          report += content;
         }
         report += `\n\`\`\`\n\n`;
       } catch (error) {
-        console.error("读取文件失败:", error);
-        // 忽略读取失败的文件（如已删除的文件）
+        console.error("read file:", file, "failed:", error);
+        continue;
       }
     }
   }
