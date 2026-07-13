@@ -48,6 +48,46 @@ bun run build
 npm link
 ```
 
+## 更新版本
+
+### 全局安装（npm/pnpm）
+
+```bash
+# npm
+npm update -g @huchenghe/ai-git
+
+# 或 pnpm
+pnpm update -g @huchenghe/ai-git
+```
+
+### 项目内安装
+
+```bash
+# npm
+npm update @huchenghe/ai-git
+
+# 或 pnpm
+pnpm update @huchenghe/ai-git
+```
+
+### 检查当前版本
+
+```bash
+ai-git -v
+# 或
+npm list -g @huchenghe/ai-git
+```
+
+### 强制升级到最新版本
+
+```bash
+# npm
+npm install -g @huchenghe/ai-git@latest
+
+# 或 pnpm
+pnpm add -g @huchenghe/ai-git@latest
+```
+
 ## 快速开始
 
 ### 1. Git 变更分析

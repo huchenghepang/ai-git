@@ -48,6 +48,46 @@ bun run build
 npm link
 ```
 
+## Updating the Package
+
+### Global Installation (npm/pnpm)
+
+```bash
+# npm
+npm update -g @huchenghe/ai-git
+
+# or pnpm
+pnpm update -g @huchenghe/ai-git
+```
+
+### Per-Project Installation
+
+```bash
+# npm
+npm update @huchenghe/ai-git
+
+# or pnpm
+pnpm update @huchenghe/ai-git
+```
+
+### Check the Current Version
+
+```bash
+ai-git -v
+# or
+npm list -g @huchenghe/ai-git
+```
+
+### Force Upgrade to the Latest Version
+
+```bash
+# npm
+npm install -g @huchenghe/ai-git@latest
+
+# or pnpm
+pnpm add -g @huchenghe/ai-git@latest
+```
+
 ## Quick Start
 
 ### 1. Git Change Analysis

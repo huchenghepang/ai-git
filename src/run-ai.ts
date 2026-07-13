@@ -1,10 +1,35 @@
 #!/usr/bin/env node
 
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import AppConfig from "./config";
 import { applyLocaleFromArgs, t } from "./i18n";
 import { requestAi } from "./utils/ai";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+function getVersion(): string {
+  const pkgPaths = [
+    join(__dirname, "..", "package.json"),
+    join(__dirname, "package.json"),
+    join(dirname(__dirname), "package.json"),
+  ];
+  for (const p of pkgPaths) {
+    try {
+      if (existsSync(p)) {
+        const pkg = JSON.parse(readFileSync(p, "utf8"));
+        if (pkg && pkg.version) return pkg.version;
+      }
+    } catch {
+      // continue
+    }
+  }
+  return "unknown";
+}
+
+const VERSION = getVersion();
 
 async function main() {
   try {
@@ -19,6 +44,9 @@ async function main() {
     for (let i = 0; i < args.length; i++) {
       if (args[i] === "--forceJson" || args[i] === "--json") {
         forceJson = true;
+      } else if (args[i] === "--version" || args[i] === "-v") {
+        console.log(VERSION);
+        return;
       } else if (args[i] === "--file" || args[i] === "-f") {
         const temp = args[i + 1];
         if (temp && typeof temp === "string") {
@@ -27,12 +55,16 @@ async function main() {
         i++;
       } else if (args[i] === "--help" || args[i] === "-h") {
         console.log(`
+${t("runAi.title")}
+${VERSION}
+
 ${t("cli.usage")}: ${t("runAi.usagePrompt")}
    ${t("common.info").toLowerCase()}: ${t("runAi.usageFile")}
 
 ${t("cli.options")}:
   --forceJson, --json    ${t("runAi.optionForceJson")}
   --file, -f <path>      ${t("runAi.optionFile")}
+  --version, -v          ${t("cli.optionVersion")}
   --help, -h             ${t("runAi.optionHelp")}
 
 ${t("cli.examples")}:
