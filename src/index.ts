@@ -54,6 +54,7 @@ async function main() {
   ${t("cli.options")}:
     -a                 ${t("cli.optionFullContent")}
     -e                 ${t("cli.optionAiMode")}
+    -E                 ${t("cli.optionAiModeDisable")}
     -f <number>        ${t("cli.optionMaxLines")}
     -i                 ${t("cli.optionInteractive")}
     -l <number>        ${t("cli.optionDiffContext")}

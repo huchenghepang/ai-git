@@ -222,7 +222,7 @@ const __dirname = path.dirname(__filename);
 // 1. 配置与常量
 // ============================================
 const CONFIG = {
-  aiAnalysis: false,
+  aiAnalysis: true,
   detectSensitive: true,
   diffContext: 3,
   includeFullFiles: true,
@@ -660,6 +660,10 @@ function parseArgs() {
       }
       case "-e": {
         CONFIG.aiAnalysis = true;
+        break;
+      }
+      case "-E": {
+        CONFIG.aiAnalysis = false;
         break;
       }
       case "-f": {

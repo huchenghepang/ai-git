@@ -24,7 +24,10 @@ export const en = {
     envVars: "Environment Variables",
     optionFullContent:
       "Include full file content (default truncated to 50,000 lines)",
-    optionAiMode: "Enable AI analysis mode (generate commit message)",
+    optionAiMode:
+      "Enable AI analysis mode (generate commit message prompt, enabled by default)",
+    optionAiModeDisable:
+      "Disable AI analysis mode (do not add commit message prompt)",
     optionMaxLines: "Set maximum lines per file (default: 50000)",
     optionInteractive: "Interactive mode (select files to include)",
     optionDiffContext: "Set diff context lines (default: 3)",

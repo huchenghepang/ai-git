@@ -162,6 +162,8 @@ ai-git [options]
 | Option | Description |
 |--------|-------------|
 | `-a` | Include full file content (no truncation) |
+| `-e` | Enable AI analysis mode (generate commit message prompt, **enabled by default**) |
+| `-E` | Disable AI analysis mode (do not add commit message prompt) |
 | `-f <number>` | Set maximum lines per file (default: 50000) |
 | `-l <number>` | Set diff context lines (default: 3) |
 | `-i` | Interactive mode (select files to include) |
