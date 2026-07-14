@@ -167,12 +167,20 @@ async function copyToClipboard(text: string): Promise<boolean> {
       try {
         // 用 UTF-8 BOM 让 clip.exe 正确识别编码
         const withBom = "\ufeff" + cleanText;
-        execSync("clip.exe", { input: withBom, timeout: 3000 });
+        execSync("clip.exe", {
+          input: withBom,
+          timeout: 3000,
+          stdio: "ignore",
+        });
         cleanup();
         return true;
       } catch {
         try {
-          execSync("clip.exe", { input: cleanText, timeout: 3000 });
+          execSync("clip.exe", {
+            input: cleanText,
+            timeout: 3000,
+            stdio: "ignore",
+          });
           cleanup();
           return true;
         } catch {
@@ -228,8 +236,6 @@ const __dirname = path.dirname(__filename);
 // 1. 配置与常量
 // ============================================
 const CLIPBOARD_TIMEOUT = 3000;
-const PROMPT_TIMEOUT = Symbol("PROMPT_TIMEOUT");
-type PromptResult = boolean | typeof PROMPT_TIMEOUT;
 
 const CONFIG = {
   aiAnalysis: true,
@@ -628,11 +634,7 @@ async function performAiAnalysis(
 
       // 询问是否复制到剪贴板
       const can = await promptUserForCopy(commitMsg);
-      if (can === PROMPT_TIMEOUT) {
-        console.log(
-          chalk.yellow(`⚠️ ${t("common.promptTimeout") || "Prompt timeout"}`),
-        );
-      } else if (can) {
+      if (can) {
         const copyOk = await copyToClipboard(commitMsg);
         if (copyOk) {
           console.log(chalk.green(`✅ ${t("common.copied")}`));
@@ -646,7 +648,6 @@ async function performAiAnalysis(
   } catch (error: any) {
     console.error(error);
     console.error(chalk.red(`❌ ${t("ai.analysisFailed")}:`), error.message);
-    // 如果解析失败，把原始结果也追加进去供人工排查
     if (outputFile) {
       fs.appendFileSync(
         outputFile,
@@ -857,6 +858,9 @@ export async function runContext() {
       },
     );
   }
+
+  // 显式退出，确保终端不会挂起（防止未关闭的子进程或其他资源导致进程残留）
+  process.exit(0);
 }
 
 /**
@@ -1034,25 +1038,16 @@ ${t("ai.prompt.outputFormatDesc")}:
 `;
 }
 
-async function promptUserForCopy(
-  text: string,
-  timeout: number = 30000,
-): Promise<PromptResult> {
-  const rl = readline.createInterface({ input, output });
-
-  return new Promise((resolve) => {
-    const timeoutId = setTimeout(() => {
-      rl.close();
-      resolve(PROMPT_TIMEOUT);
-    }, timeout);
-
-    rl.question(
+async function promptUserForCopy(text: string): Promise<boolean> {
+  try {
+    const rl = readline.createInterface({ input, output });
+    const answer = await rl.question(
       `${t("common.askCopy")}\n${text}\n${t("common.confirmCopy")}: `,
-      (answer) => {
-        clearTimeout(timeoutId);
-        rl.close();
-        resolve(answer.trim().toLowerCase() === "y");
-      },
     );
-  });
+    rl.close();
+    return answer === "y" || answer === "yes" || answer === "Y";
+  } catch (error) {
+    console.error(`❌ ${t("common.error")}:`, error);
+    return false;
+  }
 }

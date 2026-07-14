@@ -91,6 +91,7 @@ async function main() {
 
   try {
     await runContext();
+    process.exit(0);
   } catch (error) {
     console.error(`❌ ${t("common.error")}:`, error);
     process.exit(1);
