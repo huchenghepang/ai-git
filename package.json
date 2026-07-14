@@ -1,6 +1,6 @@
 {
   "name": "@huchenghe/ai-git",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "AI-powered Git context analyzer - 自动分析Git变更、生成Commit Message和代码审查报告",
   "type": "module",
   "bin": {
