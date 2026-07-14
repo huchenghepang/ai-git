@@ -104,7 +104,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
   // ============== macOS ==============
   if (platform === "darwin") {
     try {
-      execSync("pbcopy", { input: cleanText });
+      execSync("pbcopy", { input: cleanText, timeout: CLIPBOARD_TIMEOUT });
       cleanup();
       return true;
     } catch {
@@ -184,7 +184,10 @@ async function copyToClipboard(text: string): Promise<boolean> {
     // —— 方案 C：原生 Linux 剪贴板工具 ——
     if (cmdExists("xclip")) {
       try {
-        execSync("xclip -selection clipboard", { input: cleanText });
+        execSync("xclip -selection clipboard", {
+          input: cleanText,
+          timeout: CLIPBOARD_TIMEOUT,
+        });
         cleanup();
         return true;
       } catch {
@@ -193,7 +196,10 @@ async function copyToClipboard(text: string): Promise<boolean> {
     }
     if (cmdExists("xsel")) {
       try {
-        execSync("xsel --clipboard --input", { input: cleanText });
+        execSync("xsel --clipboard --input", {
+          input: cleanText,
+          timeout: CLIPBOARD_TIMEOUT,
+        });
         cleanup();
         return true;
       } catch {
@@ -202,7 +208,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
     }
     if (cmdExists("wl-copy")) {
       try {
-        execSync("wl-copy", { input: cleanText });
+        execSync("wl-copy", { input: cleanText, timeout: CLIPBOARD_TIMEOUT });
         cleanup();
         return true;
       } catch {
@@ -221,6 +227,10 @@ const __dirname = path.dirname(__filename);
 // ============================================
 // 1. 配置与常量
 // ============================================
+const CLIPBOARD_TIMEOUT = 3000;
+const PROMPT_TIMEOUT = Symbol("PROMPT_TIMEOUT");
+type PromptResult = boolean | typeof PROMPT_TIMEOUT;
+
 const CONFIG = {
   aiAnalysis: true,
   detectSensitive: true,
@@ -618,7 +628,11 @@ async function performAiAnalysis(
 
       // 询问是否复制到剪贴板
       const can = await promptUserForCopy(commitMsg);
-      if (can) {
+      if (can === PROMPT_TIMEOUT) {
+        console.log(
+          chalk.yellow(`⚠️ ${t("common.promptTimeout") || "Prompt timeout"}`),
+        );
+      } else if (can) {
         const copyOk = await copyToClipboard(commitMsg);
         if (copyOk) {
           console.log(chalk.green(`✅ ${t("common.copied")}`));
@@ -1020,14 +1034,25 @@ ${t("ai.prompt.outputFormatDesc")}:
 `;
 }
 
-async function promptUserForCopy(text: string): Promise<boolean> {
+async function promptUserForCopy(
+  text: string,
+  timeout: number = 30000,
+): Promise<PromptResult> {
   const rl = readline.createInterface({ input, output });
-  try {
-    const answer = await rl.question(
+
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      rl.close();
+      resolve(PROMPT_TIMEOUT);
+    }, timeout);
+
+    rl.question(
       `${t("common.askCopy")}\n${text}\n${t("common.confirmCopy")}: `,
+      (answer) => {
+        clearTimeout(timeoutId);
+        rl.close();
+        resolve(answer.trim().toLowerCase() === "y");
+      },
     );
-    return answer.trim().toLowerCase() === "y";
-  } finally {
-    rl.close();
-  }
+  });
 }

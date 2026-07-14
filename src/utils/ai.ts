@@ -49,14 +49,27 @@ export async function requestAi(
     body.response_format = { type: "json_object" };
   }
 
-  const res = await fetch(config.url, {
-    body: JSON.stringify(body),
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), config.timeout);
+
+  let res: Response;
+  try {
+    res = await fetch(config.url, {
+      body: JSON.stringify(body),
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+      signal: controller.signal,
+    });
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError") {
+      throw new Error(`AI request timeout after ${config.timeout}ms`);
+    }
+    throw error;
+  }
 
   const json: any = await res.json();
 
