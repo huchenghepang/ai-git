@@ -12,6 +12,7 @@ export const en = {
     copiedToClipboard: "Successfully copied to system clipboard!",
     copyFailed: "Auto copy failed, please copy manually",
     copied: "Copied to clipboard!",
+    cancelled: "Cancelled",
     askCopy: "Copy the following content to clipboard?",
     confirmCopy: "(y/n)",
   },
@@ -29,7 +30,9 @@ export const en = {
     optionAiModeDisable:
       "Disable AI analysis mode (do not add commit message prompt)",
     optionMaxLines: "Set maximum lines per file (default: 50000)",
-    optionInteractive: "Interactive mode (select files to include)",
+    optionInteractive:
+      "Interactive mode (select files to include, enabled by default)",
+    optionAll: "Skip interaction, analyze all staged files directly",
     optionDiffContext: "Set diff context lines (default: 3)",
     optionFormat: "Output format (default: md)",
     optionOutput: "Output file path",
@@ -100,6 +103,14 @@ export const en = {
     keyMaxChars: "MAX_CHARS Max request characters",
     keyLang: "language Default language (zh/en)",
     keyIgnoreEnv: "ignoreEnv Ignore env vars so config wins (true/false)",
+    keyProjectType: "projectType Target project type (frontend/backend/other)",
+    keyCustomPrompt: "customPrompt Custom review prompt (highest priority)",
+    selectProjectType: "Select the project type to review",
+    projectTypeFrontend: "Frontend project",
+    projectTypeBackend: "Backend project",
+    projectTypeOther: "Other / Unspecified",
+    enterCustomPrompt:
+      "Enter a custom review prompt (Enter to keep empty, use default)",
     selectProvider: "Select AI provider",
     arrowHint: "↑/↓ to navigate, Enter to confirm",
     providers: "Saved providers",
@@ -187,6 +198,20 @@ export const en = {
       analysisTask: "Code Change Quality Analysis Task",
       analysisIntro:
         "You are a professional code review expert. Please perform a comprehensive quality assessment of the code changes in the Git staging area above.",
+      customInstruction:
+        "【IMPORTANT】Custom Review Requirements (please prioritize)",
+      focusTitle: "Project Type",
+      focus: {
+        frontend: "Frontend Project",
+        frontendDesc:
+          "This is a frontend project. Please focus on: component structure and reusability; responsive layout and styles; state management and data flow (e.g. Redux/Pinia/hooks); memory leaks (timers, event-listener cleanup); resource/image/API request usage; browser compatibility and performance (re-renders, CDN, code-splitting), etc.",
+        backend: "Backend Project",
+        backendDesc:
+          "This is a backend project. Please focus on: API/route design; parameter validation and error handling; database queries (N+1, missing indexes, transaction boundaries); authentication/authorization; security risks (SQL injection, privilege escalation); logging and observability; concurrency and performance bottlenecks.",
+        other: "Other / Unspecified",
+        otherDesc:
+          "Follow the general code-quality evaluation criteria (naming, complexity, security, maintainability, testing, performance).",
+      },
       evalDimensions: "Evaluation Dimensions (total 100 points)",
       codeStandard: "Code Standard",
       codeStandardDesc:
@@ -258,6 +283,17 @@ export const en = {
   },
 
   interactive: {
+    taskTitle: "Select the task to run",
+    taskReview: "Code Review (full quality assessment)",
+    taskCommit: "Generate commit message",
+    taskExit: "Exit",
+    extraPromptAsk: "Add extra prompt",
+    extraPromptInput: "Enter extra prompt",
+    skillTitle:
+      "Select agent skill(s) to apply (multi-select, project & global)",
+    skillNone: "No skill (skip)",
+    skillNotFound:
+      "No skill found. Put them in project .agents, .trae, .claude dirs, or global ~/.claude/skills etc.",
     stagedFiles: "Staged Files",
     selectPrompt:
       "Enter file numbers to include (space-separated, or 'a' for all)",

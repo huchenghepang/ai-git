@@ -44,6 +44,8 @@ export const CONFIG_KEYS: {
   { key: "MAX_CHARS", label: "config.keyMaxChars", default: "120000" },
   { key: "language", label: "config.keyLang", default: "zh" },
   { key: "ignoreEnv", label: "config.keyIgnoreEnv", default: "false" },
+  { key: "projectType", label: "config.keyProjectType", default: "other" },
+  { key: "customPrompt", label: "config.keyCustomPrompt" },
 ];
 
 const ACTIONS = [
@@ -207,6 +209,12 @@ function setSpecific(key: string, value: string): void {
       process.exit(1);
     }
     (stored as any)[key] = value === "true";
+  } else if (key === "projectType") {
+    if (value !== "frontend" && value !== "backend" && value !== "other") {
+      console.error(chalk.red(`❌ ${key}: frontend | backend | other`));
+      process.exit(1);
+    }
+    (stored as any)[key] = value;
   } else {
     (stored as any)[key] = value;
   }
@@ -227,7 +235,7 @@ function setSpecific(key: string, value: string): void {
  * 非 TTY 环境下自动降级为「输入数字」方式，保证脚本/管道可用。
  * 返回选中项的索引；用户按 Ctrl+C / Ctrl+D 时返回 -1。
  */
-function selectIndex(
+export function selectIndex(
   labels: string[],
   options: { title?: string; defaultIndex?: number } = {},
 ): Promise<number> {
@@ -400,6 +408,23 @@ async function interactiveWizard(targetKey?: string): Promise<void> {
       if (langIdx >= 0) {
         (stored as any).language = langIdx === 1 ? "en" : "zh";
       }
+    } else if (targetKey === "projectType") {
+      const ptLabels = [
+        t("config.projectTypeFrontend"),
+        t("config.projectTypeBackend"),
+        t("config.projectTypeOther"),
+      ];
+      const ptVals = ["frontend", "backend", "other"] as const;
+      const cur = stored.projectType ?? "other";
+      const ptIdx = await selectIndex(ptLabels, {
+        title: chalk.bold(
+          `\n${t("config.selectProjectType")} (${t("config.arrowHint")})`,
+        ),
+        defaultIndex: ptVals.indexOf(cur) >= 0 ? ptVals.indexOf(cur) : 2,
+      });
+      if (ptIdx >= 0) {
+        (stored as any).projectType = ptVals[ptIdx];
+      }
     } else {
       rl = readline.createInterface({ input, output });
       if (targetKey === "aiUrl") {
@@ -431,6 +456,13 @@ async function interactiveWizard(targetKey?: string): Promise<void> {
         );
         const num = Number.parseInt(answer);
         if (!Number.isNaN(num) && num > 0) (stored as any).MAX_CHARS = num;
+      } else if (targetKey === "customPrompt") {
+        const answer = (
+          await rl.question(
+            `${t("config.enterCustomPrompt")}\n${stored.customPrompt ? `(当前: ${stored.customPrompt.slice(0, 60)}...)\n` : ""}> `,
+          )
+        ).trim();
+        if (answer) (stored as any).customPrompt = answer;
       } else {
         console.error(chalk.red(`❌ ${t("config.invalidKey")}: ${targetKey}`));
         rl?.close();

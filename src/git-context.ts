@@ -9,8 +9,11 @@ import { fileURLToPath } from "node:url";
 import chalk from "chalk";
 import { minimatch } from "minimatch";
 import simpleGit, { type SimpleGit } from "simple-git";
+import { selectIndex } from "./ai-config";
 import AiConfig from "./config";
 import { applyLocaleFromArgs, t } from "./i18n";
+import { findSkills, type Skill } from "./skills";
+import type { ProjectType } from "./types/config";
 import { requestAi } from "./utils/ai";
 import {
   AICodeReviewParser,
@@ -237,7 +240,15 @@ const CONFIG = {
   detectSensitive: true,
   diffContext: 3,
   includeFullFiles: true,
-  interactive: false,
+  /**
+   * 是否进入交互式引导
+   * - 默认: true（引导选择任务: 代码审查 / 生成 commit message，并可附加额外提示词）
+   * - 命令行 `-i` 强制开启
+   * - 命令行 `-y` / `--all` 跳过交互（直接分析全部暂存文件，适合脚本/管道）
+   * - 非 TTY 环境下自动跳过引导，避免挂起
+   * @default true
+   */
+  interactive: true,
   maxFileSize: 50_000,
   outputDir: "logs/commit",
   outputFile: "",
@@ -289,6 +300,15 @@ const SENSITIVE_PATTERNS = [
   /(mongodb|redis|mysql|postgresql):\/\/[^@]+@/gi,
   /database[_-]?url["\s:=]+[^"\s,;]+/gi,
 ];
+
+/**
+ * 运行时交互式引导额外输入的提示词（仅本次运行生效，不持久化到配置）
+ */
+let interactiveExtraPrompt = "";
+/**
+ * 运行时交互式选择应用的 agent skill 内容集合（仅本次运行生效）
+ */
+let interactiveSkillContents: string[] = [];
 
 // ============================================
 // 2. 核心工具函数
@@ -425,7 +445,21 @@ async function generateMarkdownReport(
     }
   }
   if (fullAnalysis) {
-    report += generateAIPrompt(forceJson, fullAnalysis);
+    // 提示词合并优先级：运行时额外提示词 > 技能内容 > 自定义提示词
+    const skillPrompt = interactiveSkillContents.filter(Boolean).join("\n\n");
+    const mergedPrompt = [
+      interactiveExtraPrompt,
+      skillPrompt,
+      AiConfig.customPrompt,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    report += generateAIPrompt(
+      forceJson,
+      fullAnalysis,
+      AiConfig.projectType,
+      mergedPrompt,
+    );
   }
 
   return report;
@@ -686,6 +720,11 @@ function parseArgs() {
         CONFIG.interactive = true;
         break;
       }
+      case "-y":
+      case "--all": {
+        CONFIG.interactive = false;
+        break;
+      }
       case "-l": {
         const temp = filteredArgs[++i];
         if (temp) {
@@ -755,22 +794,80 @@ export async function runContext() {
     process.exit(0);
   }
 
-  // 交互模式
+  // 交互式引导
   if (CONFIG.interactive) {
-    const rl = readline.createInterface({ input, output });
-    console.log(chalk.blue(`\n📋 ${t("interactive.stagedFiles")}:`));
-    stagedFiles.forEach((f, i) => console.log(`  ${i + 1}) ${f}`));
-    const answer = await rl.question(`${t("interactive.selectPrompt")}: `);
-    rl.close();
+    // 非 TTY（脚本/管道）环境无法读取用户输入，自动跳过引导，避免挂起
+    if (!input.isTTY || !output.isTTY) {
+      CONFIG.interactive = false;
+    } else {
+      const taskIdx = await selectIndex(
+        [
+          t("interactive.taskReview"),
+          t("interactive.taskCommit"),
+          t("interactive.taskExit"),
+        ],
+        {
+          title: chalk.bold(`🔧 ${t("interactive.taskTitle")}`),
+        },
+      );
 
-    if (answer.toLowerCase() !== "a") {
-      const indices = answer
-        .split(" ")
-        .map(Number)
-        .filter((n) => !isNaN(n));
-      stagedFiles = indices
-        .map((i) => stagedFiles[i - 1])
-        .filter((f): f is string => typeof f === "string");
+      if (taskIdx < 0 || taskIdx === 2) {
+        console.log(chalk.gray(t("common.cancelled")));
+        process.exit(0);
+      }
+
+      // 代码审查 -> 完整分析 JSON；生成 commit message -> 简洁 commit
+      CONFIG.uploadToAi = true;
+      CONFIG.forceJson = taskIdx === 0;
+      CONFIG.aiAnalysis = true;
+
+      // 发现并选择要应用的 agent skill（项目级 + 全局级）
+      const skills = findSkills(process.cwd());
+      const chosenSkills: Skill[] = [];
+      if (skills.length === 0) {
+        // 未检测到可用 skill，给出放置位置的提示（不阻塞流程）
+        console.log(chalk.gray(`📚 ${t("interactive.skillNotFound")}`));
+      } else {
+        const noneLabel = t("interactive.skillNone");
+        // 循环选择，可应用多个 skill，直到选择"不用技能/退出"
+        while (true) {
+          const remaining = skills.filter((s) => !chosenSkills.includes(s));
+          const labels = [
+            noneLabel,
+            ...remaining.map(
+              (s) => `${s.name}${s.description ? ` — ${s.description}` : ""}`,
+            ),
+          ];
+          const sel = await selectIndex(labels, {
+            title: chalk.bold(
+              `📚 ${t("interactive.skillTitle")}${
+                chosenSkills.length > 0
+                  ? `\n  ✓ ${chosenSkills.map((s) => s.name).join(", ")}`
+                  : ""
+              }`,
+            ),
+          });
+          if (sel < 0 || sel === 0) break;
+          chosenSkills.push(remaining[sel - 1]);
+        }
+        if (chosenSkills.length > 0) {
+          interactiveSkillContents = chosenSkills.map((s) => s.content);
+        }
+      }
+
+      // 询问是否附加额外提示词
+      const rl = readline.createInterface({ input, output });
+      const wantExtra = (
+        await rl.question(`${t("interactive.extraPromptAsk")} (y/n): `)
+      )
+        .trim()
+        .toLowerCase();
+      if (wantExtra === "y" || wantExtra === "yes") {
+        interactiveExtraPrompt = (
+          await rl.question(`${t("interactive.extraPromptInput")}: `)
+        ).trim();
+      }
+      rl.close();
     }
   }
 
@@ -886,20 +983,40 @@ feat(utils): add AI request and URL parsing utilities
 }
 
 /**
- * 根据配置生成对应的提示词
+ * 根据配置生成对应的提示词。
+ * 提示词组成（优先级从高到低）：
+ *  1. 用户自定义提示词（customPrompt，若有）
+ *  2. 默认提示词（commit message 或代码审查）
+ *  3. 项目类型侧重说明（frontend/backend，若设置了具体类型）
+ *
  * @param forceJson 是否强制 JSON 输出
  * @param fullAnalysis 是否包含完整分析（当 forceJson 为 true 时有效）
+ * @param projectType 目标项目类型，用于追加针对性审查侧重
+ * @param customPrompt 用户自定义提示词，追加在最前面
  * @returns 生成的提示词
  */
 function generateAIPrompt(
   forceJson: boolean = false,
   fullAnalysis: boolean = true,
+  projectType: ProjectType = "other",
+  customPrompt: string = "",
 ): string {
-  if (forceJson) {
-    return generateAIAnalysisPrompt(fullAnalysis);
-  } else {
-    return generateCommitMessagePrompt();
+  const base = forceJson
+    ? generateAIAnalysisPrompt(fullAnalysis)
+    : generateCommitMessagePrompt();
+
+  let prompt = "";
+  const custom = (customPrompt || "").trim();
+  if (custom) {
+    prompt += `## ${t("ai.prompt.customInstruction")}\n\n${custom}\n\n`;
   }
+  prompt += base;
+
+  if (projectType && projectType !== "other") {
+    prompt += `\n\n## ${t("ai.prompt.focusTitle")}（${t(`ai.prompt.focus.${projectType}`)}）\n${t(`ai.prompt.focus.${projectType}Desc`)}\n`;
+  }
+
+  return prompt;
 }
 
 /**

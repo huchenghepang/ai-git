@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { AppConfig } from "./types/config";
+import type { AppConfig, ProjectType } from "./types/config";
 import { parseAiUrl } from "./utils/parse-url";
 
 /**
@@ -22,6 +22,10 @@ export interface StoredConfig {
   language?: "zh" | "en";
   /** 是否忽略环境变量，让配置文件设置优先生效 */
   ignoreEnv?: boolean;
+  /** 目标项目类型，用于内置审查提示词的侧重 */
+  projectType?: ProjectType;
+  /** 自定义审查提示词（最高优先级，追加在默认提示词之前） */
+  customPrompt?: string;
   /** 已保存的多家 AI 提供商 */
   providers?: ProviderEntry[];
   /** 当前激活的提供商 id */
@@ -115,6 +119,8 @@ export function defaultConfig(): AppConfig {
     aiUrl: parseAiUrl("https://api.deepseek.com"),
     timeout: 30_000,
     MAX_CHARS: 120_000,
+    projectType: "other",
+    customPrompt: "",
   };
 }
 
@@ -188,6 +194,8 @@ export function resolveConfig(stored?: StoredConfig): AppConfig {
     MAX_CHARS: Number.parseInt(
       envMaxChars ?? String(s.MAX_CHARS ?? defaultCfg.MAX_CHARS),
     ),
+    projectType: s.projectType ?? defaultCfg.projectType,
+    customPrompt: s.customPrompt ?? defaultCfg.customPrompt,
   };
 }
 

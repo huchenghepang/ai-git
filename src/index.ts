@@ -42,6 +42,7 @@ async function main() {
     -E                 ${t("cli.optionAiModeDisable")}
     -f <number>        ${t("cli.optionMaxLines")}
     -i                 ${t("cli.optionInteractive")}
+    -y, --all          ${t("cli.optionAll")}
     -l <number>        ${t("cli.optionDiffContext")}
     -m <format>        ${t("cli.optionFormat")}
     -o <path>          ${t("cli.optionOutput")}

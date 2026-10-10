@@ -12,6 +12,7 @@ export const zh = {
     copiedToClipboard: "已成功复制到系统剪贴板！",
     copyFailed: "自动复制失败，请手动复制",
     copied: "已复制到剪贴板！",
+    cancelled: "已取消",
     askCopy: "是否将以下内容复制到剪贴板？",
     confirmCopy: "(y/n)",
   },
@@ -26,7 +27,8 @@ export const zh = {
     optionAiMode: "启用 AI 分析模式（生成 commit message 提示词，默认已启用）",
     optionAiModeDisable: "禁用 AI 分析模式（不添加 commit message 提示词）",
     optionMaxLines: "设置文件最大行数（默认: 50000）",
-    optionInteractive: "交互模式（选择要包含的文件）",
+    optionInteractive: "交互模式（选择要包含的文件，默认开启）",
+    optionAll: "跳过交互，直接分析全部暂存文件",
     optionDiffContext: "设置 diff 上下文行数（默认: 3）",
     optionFormat: "输出格式（默认: md）",
     optionOutput: "输出文件路径",
@@ -96,6 +98,13 @@ export const zh = {
     keyMaxChars: "MAX_CHARS 请求最大字符数",
     keyLang: "language 默认语言 (zh/en)",
     keyIgnoreEnv: "ignoreEnv 是否忽略环境变量，让配置文件优先 (true/false)",
+    keyProjectType: "projectType 目标项目类型 (frontend/backend/other)",
+    keyCustomPrompt: "customPrompt 自定义审查提示词（最高优先级）",
+    selectProjectType: "选择需审查的项目类型",
+    projectTypeFrontend: "前端项目",
+    projectTypeBackend: "后端项目",
+    projectTypeOther: "其他 / 不指定",
+    enterCustomPrompt: "输入自定义审查提示词（回车留空表示使用默认提示词）",
     selectProvider: "选择 AI 服务提供商",
     arrowHint: "↑/↓ 选择，回车确认",
     providers: "已保存的提供商",
@@ -182,6 +191,19 @@ export const zh = {
       analysisTask: "代码变更质量分析任务",
       analysisIntro:
         "你是一个专业的代码审查专家，请对以上 Git 暂存区的代码变更进行全面的质量评估。",
+      customInstruction: "【重要】自定义审查要求（请优先遵循）",
+      focusTitle: "项目类型",
+      focus: {
+        frontend: "前端项目",
+        frontendDesc:
+          "这是一个前端项目。请重点审查：组件结构与可复用性；响应式布局与样式是否合理；状态管理与数据流是否正确（如 Redux/Pinia/hooks）；是否有内存泄漏（定时器、事件监听清理）；资源/图片/接口请求是否合理；浏览器兼容性与性能（重渲染、CDN、分包）等。",
+        backend: "后端项目",
+        backendDesc:
+          "这是一个后端项目。请重点审查：接口与 API 路由设计是否合理；参数校验与错误处理是否完善；数据库查询是否存在 N+1、索引缺失、事务边界问题；鉴权/权限控制是否到位；是否有 SQL 注入、越权等安全风险；日志与可观测性；并发与性能瓶颈。",
+        other: "其他 / 未指定",
+        otherDesc:
+          "按通用的代码质量评估标准进行审查（命名、复杂度、安全性、可维护性、测试、性能）。",
+      },
       evalDimensions: "评估维度（总分100分）",
       codeStandard: "代码规范",
       codeStandardDesc:
@@ -251,6 +273,16 @@ export const zh = {
   },
 
   interactive: {
+    taskTitle: "请选择本次要执行的任务",
+    taskReview: "代码审查（完整质量评估）",
+    taskCommit: "生成 commit message",
+    taskExit: "退出",
+    extraPromptAsk: "是否添加额外提示词",
+    extraPromptInput: "请输入额外提示词",
+    skillTitle: "选择要应用的 agent skill（可多选，项目级与全局级均可）",
+    skillNone: "不用技能（跳过）",
+    skillNotFound:
+      "未检测到可用 skill。可将其放入项目 .agents、.trae、.claude 等目录，或全局 ~/.claude/skills 等目录。",
     stagedFiles: "暂存文件列表",
     selectPrompt: "请输入要包含的文件编号（空格分隔，或 a 全选）",
     analyzing: "检测到 {count} 个暂存文件",
