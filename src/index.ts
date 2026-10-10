@@ -4,36 +4,11 @@
  * ai-git CLI entry point
  * Git 变更上下文分析器
  */
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { runConfigCommand } from "./ai-config";
 import { readStoredConfig } from "./config";
 import { runContext } from "./git-context";
 import { applyLocaleFromArgs, getLocale, setLocaleFromConfig, t } from "./i18n";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// 读取 package.json 中的版本号（兼容源码运行和 dist 编译后两种路径）
-function getVersion(): string {
-  const pkgPaths = [
-    join(__dirname, "..", "package.json"), // 源码运行: src/index.ts
-    join(__dirname, "package.json"), // 安装后: dist/ai-git.js，package.json 在同级
-    join(dirname(__dirname), "package.json"), // 备用：上一级
-  ];
-  for (const p of pkgPaths) {
-    try {
-      if (existsSync(p)) {
-        const pkg = JSON.parse(readFileSync(p, "utf8"));
-        if (pkg && pkg.version) return pkg.version;
-      }
-    } catch {
-      // 继续尝试下一个
-    }
-  }
-  return "unknown";
-}
+import { getVersion } from "./utils/version";
 
 const VERSION = getVersion();
 

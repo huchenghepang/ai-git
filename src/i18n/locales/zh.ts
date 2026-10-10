@@ -54,9 +54,9 @@ export const zh = {
   },
 
   runAi: {
-    title: "node run-ai.js - 直接调用 AI 助手",
-    usagePrompt: "node run-ai.js [选项] <prompt>",
-    usageFile: "node run-ai.js [选项] --file <path>",
+    title: "ai-run - 直接调用 AI 助手",
+    usagePrompt: "ai-run [选项] <prompt>",
+    usageFile: "ai-run [选项] --file <path>",
     optionForceJson: "强制输出 JSON 格式",
     optionFile: "从指定文件读取 prompt 内容 (解决命令行参数过长问题)",
     optionHelp: "显示帮助信息",
@@ -65,8 +65,7 @@ export const zh = {
     exampleFile: "./report.md",
     exampleFileJson: "./large-report.md",
     needPrompt: "必须提供 prompt 文本或使用 --file 指定文件",
-    usageHint:
-      "用法: node run-ai.js [--forceJson] <prompt> 或 node run-ai.js --file <path>",
+    usageHint: "用法: ai-run [--forceJson] <prompt> 或 ai-run --file <path>",
     readFromFile: "已从文件读取内容",
     chars: "字符",
     contentTooLong: "内容过长",

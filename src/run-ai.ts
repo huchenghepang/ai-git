@@ -1,33 +1,11 @@
 #!/usr/bin/env node
 
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import AppConfig from "./config";
 import { applyLocaleFromArgs, t } from "./i18n";
 import { requestAi } from "./utils/ai";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-function getVersion(): string {
-  const pkgPaths = [
-    join(__dirname, "..", "package.json"),
-    join(__dirname, "package.json"),
-    join(dirname(__dirname), "package.json"),
-  ];
-  for (const p of pkgPaths) {
-    try {
-      if (existsSync(p)) {
-        const pkg = JSON.parse(readFileSync(p, "utf8"));
-        if (pkg && pkg.version) return pkg.version;
-      }
-    } catch {
-      // continue
-    }
-  }
-  return "unknown";
-}
+import { getVersion } from "./utils/version";
 
 const VERSION = getVersion();
 
@@ -68,10 +46,10 @@ ${t("cli.options")}:
   --help, -h             ${t("runAi.optionHelp")}
 
 ${t("cli.examples")}:
-  node run-ai.js "${t("runAi.exampleBasic")}"
-  node run-ai.js --json "${t("runAi.exampleJson")}"
-  node run-ai.js --file ${t("runAi.exampleFile")}
-  node run-ai.js --json --file ${t("runAi.exampleFileJson")}
+  ai-run "${t("runAi.exampleBasic")}"
+  ai-run --json "${t("runAi.exampleJson")}"
+  ai-run --file ${t("runAi.exampleFile")}
+  ai-run --json --file ${t("runAi.exampleFileJson")}
         `);
         return;
       } else {

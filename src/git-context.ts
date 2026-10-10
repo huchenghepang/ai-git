@@ -38,15 +38,10 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
   function cmdExists(cmd: string): boolean {
     try {
-      execSync(`which ${cmd} 2>/dev/null || true`, { stdio: "ignore" });
+      execSync(`command -v ${cmd}`, { stdio: "ignore" });
       return true;
     } catch {
-      try {
-        spawn(cmd, ["--version"], { stdio: "ignore" });
-        return true;
-      } catch {
-        return false;
-      }
+      return false;
     }
   }
 
@@ -443,7 +438,6 @@ async function performAiAnalysis(
   aiConfig: {
     model: string;
     aiApiKey: string;
-    aiModel: string;
     aiUrl: string;
     timeout: number;
   },
@@ -852,7 +846,6 @@ export async function runContext() {
       {
         model: AiConfig.aiModel,
         aiApiKey: AiConfig.aiApiKey,
-        aiModel: AiConfig.aiModel,
         aiUrl: AiConfig.aiUrl,
         timeout: AiConfig.timeout,
       },

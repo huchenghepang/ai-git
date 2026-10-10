@@ -4,33 +4,9 @@
  * ai-git-review - Quick command: Full AI code review
  * Equivalent to ai-git -e -u -j
  */
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { runContext } from "./git-context";
 import { applyLocaleFromArgs, getLocale, t } from "./i18n";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-function getVersion(): string {
-  const pkgPaths = [
-    join(__dirname, "..", "package.json"),
-    join(__dirname, "package.json"),
-    join(dirname(__dirname), "package.json"),
-  ];
-  for (const p of pkgPaths) {
-    try {
-      if (existsSync(p)) {
-        const pkg = JSON.parse(readFileSync(p, "utf8"));
-        if (pkg && pkg.version) return pkg.version;
-      }
-    } catch {
-      // continue
-    }
-  }
-  return "unknown";
-}
+import { getVersion } from "./utils/version";
 
 const VERSION = getVersion();
 

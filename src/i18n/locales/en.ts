@@ -58,9 +58,9 @@ export const en = {
   },
 
   runAi: {
-    title: "node run-ai.js - Call AI assistant directly",
-    usagePrompt: "node run-ai.js [options] <prompt>",
-    usageFile: "node run-ai.js [options] --file <path>",
+    title: "ai-run - Call AI assistant directly",
+    usagePrompt: "ai-run [options] <prompt>",
+    usageFile: "ai-run [options] --file <path>",
     optionForceJson: "Force JSON output",
     optionFile: "Read prompt content from file (solves long argument issues)",
     optionHelp: "Show help information",
@@ -69,8 +69,7 @@ export const en = {
     exampleFile: "./report.md",
     exampleFileJson: "./large-report.md",
     needPrompt: "You must provide prompt text or use --file to specify a file",
-    usageHint:
-      "Usage: node run-ai.js [--forceJson] <prompt> or node run-ai.js --file <path>",
+    usageHint: "Usage: ai-run [--forceJson] <prompt> or ai-run --file <path>",
     readFromFile: "Read content from file",
     chars: "chars",
     contentTooLong: "Content too long",
