@@ -92,6 +92,22 @@ pnpm add -g @huchenghe/ai-git@latest
 
 ## 快速开始
 
+### 0. 使用 `ai-git config` 配置 AI
+
+所有 AI 功能（Commit Message、代码审查、`ai-run`）都需要 AI 接口地址、Token 和模型。无需手动修改环境变量，推荐通过命令行一次性完成配置，并支持在多家 AI 服务之间切换：
+
+```bash
+ai-git config
+```
+
+该命令会打开交互式向导，可选择内置提供商（DeepSeek、OpenAI、Ollama 等）或自定义接口，随后可用以下命令测试连接：
+
+```bash
+ai-git config test
+```
+
+配置会持久化保存到 `~/.ai-git/config.json`。你也可以设置单项（如 `ai-git config set aiUrl ...`）、管理多家提供商（`ai-git config add` / `use` / `remove`），并通过 `ai-git config list` 查看全部配置。完整说明见下文 [ai-git config](#ai-git-config--配置管理与连接测试-) 章节。
+
 ### 1. Git 变更分析
 
 在任意 Git 仓库中，先暂存文件：

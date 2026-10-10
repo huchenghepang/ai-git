@@ -90,6 +90,22 @@ pnpm add -g @huchenghe/ai-git@latest
 
 ## Quick Start
 
+### 0. Configure AI with `ai-git config`
+
+All AI features (commit messages, code review, `ai-run`) need an AI endpoint, token and model. Instead of hand-editing environment variables, configure them once via the CLI — this is the recommended way and also lets you switch between multiple providers:
+
+```bash
+ai-git config
+```
+
+This opens an interactive wizard where you can pick a built-in provider (DeepSeek, OpenAI, Ollama, etc.) or enter a custom endpoint, then test the connection with:
+
+```bash
+ai-git config test
+```
+
+Config is persisted to `~/.ai-git/config.json`. You can also set individual keys (e.g. `ai-git config set aiUrl ...`), manage multiple providers (`ai-git config add` / `use` / `remove`), and view everything with `ai-git config list`. See the full [ai-git config](#ai-git-config--configuration--connection-test-) reference below.
+
 ### 1. Git Change Analysis
 
 In any Git repository, first stage your files:
