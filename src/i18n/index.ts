@@ -29,6 +29,20 @@ export function setLocale(locale: Locale): void {
   currentLocale = locale;
 }
 
+/**
+ * 若命令行未显式给 -L/--lang，则跟随配置文件中的 language 设置界面语言。
+ */
+export function setLocaleFromConfig(
+  args: string[],
+  language: string | undefined,
+): void {
+  if (!parseLocaleArg(args)) {
+    if (language === "en" || language === "zh") {
+      setLocale(language);
+    }
+  }
+}
+
 export function getLocale(): Locale {
   return currentLocale;
 }

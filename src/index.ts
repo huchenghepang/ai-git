@@ -7,8 +7,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runConfigCommand } from "./ai-config";
+import { readStoredConfig } from "./config";
 import { runContext } from "./git-context";
-import { applyLocaleFromArgs, getLocale, t } from "./i18n";
+import { applyLocaleFromArgs, getLocale, setLocaleFromConfig, t } from "./i18n";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,11 +39,19 @@ const VERSION = getVersion();
 
 async function main() {
   let args = process.argv.slice(2);
+
+  // 命令行显式指定了 -L/--lang 才用它；否则跟随配置文件 language
+  setLocaleFromConfig(process.argv.slice(2), readStoredConfig().language);
   args = applyLocaleFromArgs(args);
 
   if (args.includes("--version") || args.includes("-v")) {
     console.log(VERSION);
     process.exit(0);
+  }
+
+  if (args[0] === "config") {
+    await runConfigCommand(args.slice(1));
+    return;
   }
 
   if (args.includes("--help") || args.includes("-h")) {
@@ -68,6 +78,8 @@ async function main() {
     -L, --lang <zh|en> ${t("cli.optionLang")}
     -v, --version      ${t("cli.optionVersion")}
     -h, --help         ${t("cli.optionHelp")}
+
+  ai-git config         ${t("config.title")} (${t("config.usage")})
 
   ${t("cli.examples")}:
     ai-git                         ${t("cli.exampleBasic")}

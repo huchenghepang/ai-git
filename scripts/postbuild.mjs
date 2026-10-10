@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, "..", "dist");
 
-const files = ["ai-git.js", "ai-git-review.js", "ai-run.js"];
+const files = ["ai-git.js", "ai-git-review.js", "ai-run.js", "ai-git-config.js"];
 
 for (const file of files) {
   const filePath = path.join(distDir, file);

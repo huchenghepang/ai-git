@@ -6,6 +6,7 @@
   "bin": {
     "ai-git": "dist/ai-git.js",
     "ai-git-review": "dist/ai-git-review.js",
+    "ai-git-config": "dist/ai-git-config.js",
     "ai-run": "dist/ai-run.js"
   },
   "files": [
@@ -13,10 +14,11 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun run build:git-context && bun run build:git-review && bun run build:run-ai",
+    "build": "bun run build:git-context && bun run build:git-review && bun run build:run-ai && bun run build:config",
     "build:git-context": "bun build ./src/index.ts --outfile ./dist/ai-git.js --target node",
     "build:git-review": "bun build ./src/ai-git-review.ts --outfile ./dist/ai-git-review.js --target node",
     "build:run-ai": "bun build ./src/run-ai.ts --outfile ./dist/ai-run.js --target node",
+    "build:config": "bun build ./src/ai-git-config.ts --outfile ./dist/ai-git-config.js --target node",
     "postbuild": "node scripts/postbuild.mjs",
     "release": "node scripts/publish.mjs",
     "prepublishOnly": "bun run build",

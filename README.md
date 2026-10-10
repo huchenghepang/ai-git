@@ -110,6 +110,8 @@ ai-git
 
 ### 2. 使用 AI 生成 Commit Message
 
+> **推荐**：使用 `ai-git config` 交互式配置 AI 接口、Token 和模型，并可用 `ai-git config test` 测试连接（参考上文 `ai-git config` 章节）。
+
 单次会话设置环境变量：
 
 ```bash
@@ -150,6 +152,7 @@ ai-git -e -u -j
 | 命令 | 说明 |
 |------|------|
 | `ai-git` | Git 变更上下文分析器（默认） |
+| `ai-git config` | 配置 AI 接口地址、Token、模型并测试连接 |
 | `ai-git-review` | 快捷命令：`ai-git -e -u -j` 一键完整 AI 审查 |
 | `ai-run` | 独立的 AI 请求工具 |
 
@@ -246,6 +249,80 @@ ai-run --file ./prompt.txt
 # 强制 JSON 输出
 ai-run --json "分析这段代码"
 ```
+
+### `ai-git config` — 配置管理与连接测试 ⚙️
+
+无需手动编辑环境变量，通过 CLI 交互式配置 AI 接口地址、Token 和模型，并可测试连接。配置会持久化保存到 `~/.ai-git/config.json`。
+
+```bash
+# 交互式配置（推荐，内置常用提供商可选，也可自定义）
+ai-git config
+# 等价写法
+ai-git config set
+
+# 设置单项
+ai-git config set aiUrl https://api.deepseek.com
+ai-git config set aiApiKey sk-xxxx
+ai-git config set aiModel deepseek-chat
+ai-git config set timeout 30000
+ai-git config set MAX_CHARS 120000
+ai-git config set language zh
+
+# 查看配置
+ai-git config list         # 显示全部
+ai-git config get aiModel  # 查看单项
+
+# 删除配置项
+ai-git config unset aiApiKey
+
+# 测试 AI 连接（验证地址 + Token + 模型是否可用）
+ai-git config test
+ai-git config test deepseek-chat
+
+# === 多提供商管理 ===
+# 新增一家 AI 提供商（交互式选择并填写，自动设为当前使用）
+ai-git config add
+# 切换当前使用的提供商
+ai-git config use            # 无参：方向键列出选择
+ai-git config use 1          # 按序号快速切换
+ai-git config use "OpenAI"   # 按名称/地址/id 快速切换
+# 删除某家提供商
+ai-git config remove 2
+```
+
+| 子命令 | 说明 |
+|------|------|
+| （无参数） | 默认进入交互式向导（选择提供商、输入 Token、模型、超时） |
+| `set` | 交互式向导，等价于无参数；也可 `set <key> <value>` 设置单项 |
+| `get [key]` | 查看配置（缺省显示全部，含被环境变量覆盖的提示） |
+| `list` | 列出全部配置项与已保存的提供商（标记当前使用项） |
+| `test [model]` | 发送真实请求测试 AI 连接是否正常 |
+| `unset <key>` | 删除某个配置项 |
+| `add` | 新增一家 AI 提供商（方向键选择，可保存多家） |
+| `use [name\|index]` | 切换当前使用的提供商（无参时方向键列表选择） |
+| `remove <name\|index>` | 删除某家已保存的提供商 |
+
+> **多提供商说明**：`ai-git config add` 可保存多家 AI 服务（如 DeepSeek、OpenAI、Ollama 等），当前使用项用 `●` 标记。切换使用项后，所有 AI 调用（分析、Commit、审查）与 `ai-git config test` 都会自动跟随当前选中项，无需重新配置。
+>
+> **无参数 `ai-git config`**：直接进入「选择当前使用提供商」的交互菜单（方向键选择，可跳转新增一家或退出），不必再用单独的 `use` 子命令。
+
+**环境变量说明**：默认优先级为 **环境变量（`AI_API_KEY`/`AI_URL`/`AI_MODEL`/`AI_TIMEOUT`/`MAX_CHARS`）> 配置文件 > 默认值**。
+如果你已经全局设置了 `AI_URL`/`AI_MODEL`/`AI_API_KEY` 等环境变量，那么切换提供商、`config set` 的选择会被这些环境变量覆盖而「不生效」——这是设计使然（环境变量优先级更高）。
+
+若希望**配置文件的选择生效**（忽略环境变量），运行：
+
+```bash
+# 让配置文件优先生效（忽略 AI_* 环境变量）
+ai-git config set ignoreEnv true
+# 恢复环境变量优先
+ai-git config set ignoreEnv false
+# 查看当前 ignoreEnv 状态
+ai-git config get ignoreEnv
+```
+
+开启 `ignoreEnv` 后，`list` 不再显示「值被环境变量覆盖」，所有 AI 调用将严格使用 `config.json` 中当前激活的提供商。
+
+也可使用独立命令 `ai-git-config`（等价于 `ai-git config`）。
 
 ## 多语言设置 🌐
 
