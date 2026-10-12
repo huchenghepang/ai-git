@@ -694,6 +694,8 @@ function parseArgs() {
   // 应用语言设置（同时从 args 中移除语言参数）
   const filteredArgs = applyLocaleFromArgs(args);
 
+  let interactiveExplicitlySet = false;
+
   for (let i = 0; i < filteredArgs.length; i++) {
     switch (filteredArgs[i]) {
       case "-a": {
@@ -718,11 +720,13 @@ function parseArgs() {
       }
       case "-i": {
         CONFIG.interactive = true;
+        interactiveExplicitlySet = true;
         break;
       }
       case "-y":
       case "--all": {
         CONFIG.interactive = false;
+        interactiveExplicitlySet = true;
         break;
       }
       case "-l": {
@@ -772,6 +776,12 @@ function parseArgs() {
         break;
       }
     }
+  }
+
+  // 当用户显式传入 -u（上传到 AI 分析）时，说明用户已经决定了要执行的操作，
+  // 此时自动跳过交互式任务选择；除非用户同时显式传入 -i 强制开启交互。
+  if (CONFIG.uploadToAi && !interactiveExplicitlySet) {
+    CONFIG.interactive = false;
   }
 }
 

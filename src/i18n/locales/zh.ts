@@ -10,7 +10,7 @@ export const zh = {
     fileNotFound: "找不到文件",
     readFileFailed: "读取文件失败",
     copiedToClipboard: "已成功复制到系统剪贴板！",
-    copyFailed: "自动复制失败，请手动复制",
+    copyFailed: "自动复制可能失败，请手动复制",
     copied: "已复制到剪贴板！",
     cancelled: "已取消",
     askCopy: "是否将以下内容复制到剪贴板？",

@@ -10,7 +10,7 @@ export const en = {
     fileNotFound: "File not found",
     readFileFailed: "Failed to read file",
     copiedToClipboard: "Successfully copied to system clipboard!",
-    copyFailed: "Auto copy failed, please copy manually",
+    copyFailed: "Auto copy may have failed to copy, please copy manually",
     copied: "Copied to clipboard!",
     cancelled: "Cancelled",
     askCopy: "Copy the following content to clipboard?",
